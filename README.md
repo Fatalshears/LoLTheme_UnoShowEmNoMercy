@@ -31,10 +31,11 @@ Trong mạng LAN: http://192.168.1.25:3000
 1. Nhập tên và bấm **Vào bàn**. Người vào đầu tiên là **Chủ phòng**.
 2. Chủ phòng có thể **+ Thêm bot** để đủ người (2–8), rồi bấm **Bắt đầu**.
 3. Bài đánh được sẽ nổi lên và có viền vàng; bấm để đánh. Lá Đa Sắc sẽ hỏi màu, số 7 sẽ hỏi người để tráo.
-4. Không có bài hợp lệ: bấm **Rút bài** (hoặc bấm vào chồng rút), tối đa 5 lá.
+4. Không có bài hợp lệ: bấm **Rút bài** (hoặc bấm vào chồng rút ở góc trên bên trái), tối đa 3 lá.
 5. Bị cộng dồn: đánh đè lá phạt có giá trị lớn hơn hoặc bằng, hoặc bấm **Chịu phạt**.
 6. Còn 1 lá: bấm **TỚI BẾN!** cho đẹp (không có phạt nếu quên).
-7. 😀 mở bảng emote, 📜 mở nhật ký ván.
+7. Mỗi lượt có 45 giây; hết giờ hệ thống tự đánh thay.
+8. ❓ mở bảng tra cứu hiệu ứng lá bài, 😀 mở bảng emote, 📜 mở nhật ký ván. Rê chuột lên lá bài để xem hiệu ứng.
 
 **Rớt mạng / F5:** trình duyệt nhớ ghế của bạn; mở lại trang là vào lại đúng ghế. Ai mất kết nối quá 30 giây khi tới lượt thì hệ thống tự đánh thay.
 Đổi sang máy khác: mở trang, bấm **Lấy lại ghế cũ?** và chọn tên mình.

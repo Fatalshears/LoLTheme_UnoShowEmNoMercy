@@ -9,12 +9,14 @@ const express = require('express');
 const { Server } = require('socket.io');
 const E = require('../shared/engine.js');
 const Bot = require('../shared/bot.js');
+const Pace = require('../shared/pace.js');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ROOT = path.join(__dirname, '..');
 const SNAPSHOT = path.join(ROOT, 'data', 'snapshot.json');
 const BOT_DELAY_MS = 900;
 const GRACE_MS = 30000;      // disconnected player gets this long before auto-play
+const TURN_MS = Number(process.env.TURN_MS) || Pace.TURN_MS; // every human decision has a 45s timer, then auto-play
 const MAX_SEATS = 8;
 const BOT_NAMES = ['Teemo', 'Yasuo', 'Lux', 'Jinx', 'Garen', 'Ahri', 'Draven', 'Zed', 'Annie', 'Thresh'];
 
@@ -45,7 +47,9 @@ const table = {
   seatTokens: [],           // seat index -> player token for the current round
   scores: {},               // token -> total points
   round: 0,
-  emoteCooldown: {}
+  emoteCooldown: {},
+  animUntil: 0,             // clients are animating the last events until this time
+  turn: null                // { key, deadline } for the decision currently awaited
 };
 
 const sockets = new Map();  // socket.id -> token
@@ -73,6 +77,7 @@ function loadSnapshot() {
     }
     const now = Date.now();
     for (const p of table.players) if (!p.bot) p.lastSeen = now; // grace period restarts after a server restart
+    table.turn = null; table.animUntil = 0;
     console.log(`Đã khôi phục bàn chơi từ snapshot (${table.status}).`);
   } catch (e) { console.error('Không đọc được snapshot:', e.message); }
 }
@@ -94,7 +99,25 @@ function publicPlayers() {
   }));
 }
 
+// Start a fresh timer whenever the awaited decision changes (new turn or another player must act).
+function updateTurn() {
+  if (table.status !== 'playing' || !table.game) { table.turn = null; return; }
+  const seat = E.actor(table.game);
+  const key = `${table.game.turnId}:${seat}:${table.game.phase === 'stack' ? 's' : table.game.phase === 'roulette' ? 'r' : 'p'}`;
+  if (table.turn && table.turn.key === key) return;
+  table.turn = { key, seat, deadline: Math.max(Date.now(), table.animUntil) + TURN_MS };
+}
+
+// Remaining time shown to clients; only humans who are not on auto-play get a visible timer.
+function turnInfo() {
+  if (table.status !== 'playing' || !table.turn) return null;
+  const p = findPlayer(table.seatTokens[table.turn.seat]);
+  if (!p || p.bot || p.auto) return null;
+  return { seat: table.turn.seat, leftMs: Math.max(0, table.turn.deadline - Date.now()), totalMs: TURN_MS };
+}
+
 function broadcast(events = []) {
+  const timer = turnInfo();
   for (const [sid, token] of sockets) {
     const s = io.sockets.sockets.get(sid);
     if (!s) continue;
@@ -105,7 +128,7 @@ function broadcast(events = []) {
       me: me ? { id: token.slice(0, 8), name: me.name, seat, host: token === table.hostToken } : null,
       players: publicPlayers(),
       view: table.game ? E.viewFor(table.game, seat >= 0 ? seat : null) : null,
-      events
+      timer, events
     });
   }
 }
@@ -122,7 +145,10 @@ function startRound() {
   table.seatTokens = order.map(p => p.token);
   table.game = E.newRound(order.map(p => ({ name: p.name })));
   table.status = 'playing';
-  broadcast([{ type: 'roundStart' }]);
+  const events = [{ type: 'roundStart' }];
+  table.animUntil = Date.now() + Pace.totalMs(events);
+  table.turn = null; updateTurn();
+  broadcast(events);
   afterChange();
 }
 
@@ -133,6 +159,8 @@ function applyAction(seat, action) {
     const winnerToken = table.seatTokens[table.game.winner];
     table.scores[winnerToken] = (table.scores[winnerToken] || 0) + table.game.points;
   }
+  table.animUntil = Math.max(Date.now(), table.animUntil) + Pace.totalMs(events);
+  updateTurn();
   broadcast(events);
   afterChange();
 }
@@ -146,10 +174,15 @@ function afterChange() {
   if (seat == null) return;
   const p = findPlayer(table.seatTokens[seat]);
   if (!p) return;
-  let delay = null;
-  if (p.bot || p.auto) delay = BOT_DELAY_MS;
-  else if (!p.connected) delay = Math.max(BOT_DELAY_MS, GRACE_MS - (Date.now() - (p.lastSeen || 0)));
-  if (delay == null) return;
+  updateTurn();
+  const now = Date.now();
+  const animLeft = Math.max(0, table.animUntil - now);
+  const timeLeft = table.turn.deadline - now;
+  let delay;
+  if (p.bot || p.auto) delay = Math.max(BOT_DELAY_MS, animLeft + 500);
+  else if (timeLeft <= 0) delay = Math.max(BOT_DELAY_MS, animLeft + 300);   // timed out: finish the turn for them
+  else if (!p.connected) delay = Math.max(BOT_DELAY_MS, Math.min(timeLeft, GRACE_MS - (now - (p.lastSeen || 0))));
+  else delay = timeLeft;
   const turnId = table.game.turnId, phase = table.game.phase;
   autoTimer = setTimeout(() => {
     if (table.status !== 'playing' || table.game.turnId !== turnId || table.game.phase !== phase) { afterChange(); return; }

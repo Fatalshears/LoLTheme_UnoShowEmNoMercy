@@ -61,27 +61,34 @@
     setTimeout(() => el.remove(), ms);
   }
 
-  // Spinning wheel that lands on `result` (one of `values`).
-  function wheel(title, values, result, x, y) {
+  // Slot-style roll that slows down and lands on `result` (one of `values`), then holds
+  // the result with a caption. Total time matches ToiBenPace.WHEEL_MS.
+  function wheel(title, values, result, x, y, opts = {}) {
+    const total = (window.ToiBenPace && window.ToiBenPace.WHEEL_MS) || 3800;
+    const spinMs = Math.round(total * 0.6), holdMs = total - spinMs - 150;
     return new Promise(resolve => {
       const el = document.createElement('div');
       el.className = 'wheel';
-      el.style.left = x + 'px'; el.style.top = y + 'px';
-      el.innerHTML = `<div class="wheel-title">${title}</div><div class="wheel-num">?</div>`;
+      el.style.left = Math.max(150, Math.min(innerWidth - 150, x)) + 'px'; el.style.top = y + 'px';
+      el.innerHTML = `<div class="wheel-title"></div><div class="wheel-num">?</div><div class="wheel-cap"></div>`;
+      el.querySelector('.wheel-title').textContent = title;
       layer().appendChild(el);
       const num = el.querySelector('.wheel-num');
-      let t = 0;
-      const total = 14;
+      // delays grow so the roll visibly slows down
+      const delays = [];
+      for (let t = 0, acc = 0; acc < spinMs; t++) { const d = 55 + t * t * 1.6; delays.push(d); acc += d; }
+      let i = 0;
       const tick = () => {
-        t++;
-        if (t < total) {
-          num.textContent = values[t % values.length];
-          setTimeout(tick, 40 + t * 12);
+        if (i < delays.length) {
+          num.textContent = values[(i + values.indexOf(result) + 1) % values.length];
+          num.classList.remove('roll'); void num.offsetWidth; num.classList.add('roll');
+          setTimeout(tick, delays[i++]);
         } else {
           num.textContent = result;
+          el.querySelector('.wheel-cap').textContent = opts.caption || '';
           el.classList.add('done');
           sprite('sparkle', x, y, { scale: 3 });
-          setTimeout(() => { el.remove(); resolve(); }, 900);
+          setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.remove(); resolve(); }, 150); }, holdMs);
         }
       };
       tick();

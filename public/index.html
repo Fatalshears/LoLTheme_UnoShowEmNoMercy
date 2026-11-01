@@ -29,6 +29,7 @@
             <button id="startBtn" class="btn primary">Bắt đầu</button>
           </div>
           <p id="waitHost" class="muted hidden">Đang chờ chủ phòng bắt đầu…</p>
+          <p class="muted small"><button id="lobbyHelpBtn" class="link">Xem hiệu ứng các lá bài</button></p>
           <p class="muted small">Người khác trong mạng LAN mở cùng địa chỉ trên trình duyệt để vào bàn (2–8 người).</p>
         </div>
         <p id="spectatorNote" class="muted hidden">Ván đang diễn ra, bạn đang xem. <button id="claimBtn" class="link">Lấy lại ghế cũ?</button></p>
@@ -38,16 +39,34 @@
     <!-- Table -->
     <section id="table" class="screen hidden">
       <div id="seats"></div>
+      <div id="drawPile" class="deck">
+        <div class="deck-stack">
+          <img src="/assets/cards/wild_backside.jpg" alt="" class="card back d3">
+          <img src="/assets/cards/wild_backside.jpg" alt="" class="card back d2">
+          <img src="/assets/cards/wild_backside.jpg" alt="Chồng rút" class="card back d1">
+        </div>
+        <div class="deck-label">Chồng rút · <b id="drawCount"></b></div>
+      </div>
       <div id="center">
-        <div id="dirRing" class="dir-ring"><span>➜</span></div>
-        <div class="pile" id="drawPile" title="Rút bài">
-          <img src="/assets/cards/wild_backside.jpg" alt="Chồng rút" class="card back">
-          <div class="pile-count" id="drawCount"></div>
-        </div>
-        <div class="pile" id="discardPile">
-          <div id="colorRing"></div>
-          <img id="topCard" class="card" alt="Lá trên cùng">
-        </div>
+        <div id="dirArrows"><div class="flip">
+          <svg viewBox="0 0 200 200" aria-hidden="true">
+            <defs>
+              <linearGradient id="arrowGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#ffd25e"/><stop offset=".55" stop-color="#ff8a1a"/><stop offset="1" stop-color="#ff5a00"/>
+              </linearGradient>
+              <marker id="arrowHead" markerUnits="userSpaceOnUse" markerWidth="30" markerHeight="30" viewBox="0 0 30 30" refX="7" refY="15" orient="auto">
+                <path d="M1,1 L29,15 L1,29 L7,15 z" fill="#ff8a1a" stroke="#3a1600" stroke-width="2.5" stroke-linejoin="round"/>
+              </marker>
+            </defs>
+            <path class="arc-outline" d="M23.87 64.5 A84 84 0 0 1 176.13 64.5"/>
+            <path class="arc-outline" d="M176.13 135.5 A84 84 0 0 1 23.87 135.5"/>
+            <path class="arc" d="M23.87 64.5 A84 84 0 0 1 176.13 64.5" marker-end="url(#arrowHead)"/>
+            <path class="arc" d="M176.13 135.5 A84 84 0 0 1 23.87 135.5" marker-end="url(#arrowHead)"/>
+          </svg>
+        </div></div>
+        <div id="colorAura"></div>
+        <div id="discardPile"><div id="pileCards"></div></div>
+        <div id="colorTag"></div>
         <div id="stackBadge" class="hidden"></div>
       </div>
       <div id="status"></div>
@@ -55,6 +74,7 @@
         <button id="drawBtn" class="btn">Rút bài</button>
         <button id="acceptBtn" class="btn danger hidden">Chịu phạt</button>
         <button id="toiBenBtn" class="btn gold hidden">TỚI BẾN!</button>
+        <button id="helpBtn" class="btn icon help" title="Tra cứu lá bài">?</button>
         <button id="emoteBtn" class="btn icon" title="Biểu cảm">😀</button>
         <button id="logBtn" class="btn icon" title="Nhật ký">📜</button>
       </div>
@@ -89,6 +109,16 @@
       </div>
     </div>
 
+    <div id="help" class="hidden">
+      <div class="modal-card help-card">
+        <button id="helpClose" class="close-x" title="Đóng">✕</button>
+        <h2>Tra cứu lá bài</h2>
+        <div class="help-rules" id="helpRules"></div>
+        <div class="help-grid" id="helpGrid"></div>
+      </div>
+    </div>
+    <div id="tip" class="hidden"></div>
+
     <div id="toast"></div>
     <footer id="credits">Hiệu ứng: Super Pixel Effects Gigapack - Will Tice / unTied Games</footer>
   </div>
@@ -96,6 +126,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/vendor/lottie.min.js"></script>
   <script src="/shared/engine.js"></script>
+  <script src="/shared/pace.js"></script>
   <script src="fx.js"></script>
   <script src="client.js"></script>
 </body>

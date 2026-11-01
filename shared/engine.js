@@ -6,7 +6,7 @@
   const COLORS = ['red', 'yellow', 'green', 'blue'];
   const KNOCKOUT = 27;          // Tới Số at this many cards
   const HAND_SIZE = 7;
-  const MAX_DRAW = 5;           // draw at most 5 per turn looking for a playable card
+  const MAX_DRAW = 3;           // draw at most 3 per turn looking for a playable card
   const SEVEN_MAX = 5;          // the 7 swaps K in 1..5 cards
   const STACK_VALUE = { draw2: 2, draw4: 4, wildReverseDraw4: 4, wildDraw6: 6, wildDraw10: 10 };
   const WILD_KINDS = ['wildReverseDraw4', 'wildRoulette', 'wildDraw6', 'wildDraw10'];
@@ -463,7 +463,7 @@
       playable: seat != null ? playableIds(st, seat) : [],
       top: top(st), activeColor: st.activeColor, direction: st.direction,
       drawCount: st.drawPile.length, phase: st.phase, current: st.current, actor: actor(st),
-      drawnThisTurn: st.drawnThisTurn, maxDraw: MAX_DRAW,
+      drawnThisTurn: st.drawnThisTurn, maxDraw: MAX_DRAW, recent: st.discard.slice(-7),
       stack: st.stack, roulette: st.roulette && { victim: st.roulette.victim },
       winner: st.winner, endReason: st.endReason, points: st.points ?? 0,
       knockouts: st.knockouts, log: st.log.slice(-40), turnId: st.turnId

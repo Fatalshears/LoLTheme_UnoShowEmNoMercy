@@ -1,0 +1,39 @@
+// Chơi Tới Bến — animation pacing shared by server and client.
+// The client plays events one after another using these durations; the server waits
+// the same amount before a bot acts or a turn timer starts, so nobody acts mid-animation.
+(function (root) {
+  'use strict';
+
+  const TURN_MS = 45000;   // per-decision turn timer for human players
+  const WHEEL_MS = 3800;   // 0 / 7 random wheel: spin + hold on the result
+
+  // How long the client spends on one event, in ms.
+  function eventMs(e) {
+    switch (e.type) {
+      case 'roundStart': return 1400;
+      case 'play': return 800;
+      case 'discardAll': return 700 + Math.min(e.count || 0, 10) * 110;
+      case 'skip': return 900;
+      case 'reverse': return 1100;
+      case 'stack': return 1100;
+      case 'takeStack': case 'draw': return 450 + Math.min(e.count || 1, 12) * 120;
+      case 'drawFail': return 1000;
+      case 'zero': return WHEEL_MS + (e.n > 0 ? e.n * 1300 : 300);
+      case 'seven': return WHEEL_MS + 700 + Math.max(1, e.k || 1) * 260 + 900;
+      case 'rouletteStart': return 1500;
+      case 'roulette': return 600 + (e.flipped ? e.flipped.length : 1) * 380 + 600;
+      case 'knockout': return 2200;
+      case 'lastCard': return 300;
+      case 'toiBen': return 1200;
+      case 'reshuffle': return 900;
+      case 'win': return 2600;
+      default: return 0;
+    }
+  }
+
+  const totalMs = events => (events || []).reduce((a, e) => a + eventMs(e), 0);
+
+  const api = { TURN_MS, WHEEL_MS, eventMs, totalMs };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.ToiBenPace = api;
+})(typeof window !== 'undefined' ? window : globalThis);

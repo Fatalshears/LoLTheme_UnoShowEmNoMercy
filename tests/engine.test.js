@@ -92,14 +92,17 @@ function setup(n, hands, topCard, color) {
   assert.strictEqual(st.current, 2);
 }
 
-// Draw: max 5, then lose turn
+// Draw: max 3, then lose turn
 {
   const st = setup(2, [[{ color: 'blue', kind: 'number', value: 1 }], [{ color: 'blue', kind: 'number', value: 2 }]],
     { color: 'red', kind: 'number', value: 5 });
-  st.drawPile.push(...Array.from({ length: 5 }, (_, i) => ({ id: 5000 + i, color: 'green', kind: 'number', value: 3 })));
-  for (let i = 0; i < 5; i++) E.act(st, 0, { type: 'draw' });
+  st.drawPile.push(...Array.from({ length: 3 }, (_, i) => ({ id: 5000 + i, color: 'green', kind: 'number', value: 3 })));
+  for (let i = 0; i < 2; i++) E.act(st, 0, { type: 'draw' });
+  assert.strictEqual(st.current, 0);
+  E.act(st, 0, { type: 'draw' });
+  assert.strictEqual(E.MAX_DRAW, 3);
   assert.strictEqual(st.current, 1);
-  assert.strictEqual(st.seats[0].hand.length, 6);
+  assert.strictEqual(st.seats[0].hand.length, 4);
 }
 
 // Draw a playable card -> must play it

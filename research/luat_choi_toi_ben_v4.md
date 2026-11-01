@@ -74,10 +74,13 @@ Lá hợp lệ khi thỏa ít nhất một điều kiện:
 - Là lá **Đa Sắc** bất kỳ.
 
 ### 2.2 Rút bài **[MỚI]**
-Nếu không có lá hợp lệ (hoặc chủ động không đánh), người chơi rút **từng lá một**, tối thiểu 1 lá, tối đa **5 lá**:
+Nếu không có lá hợp lệ (hoặc chủ động không đánh), người chơi rút **từng lá một**, tối thiểu 1 lá, tối đa **3 lá**:
 - Ngay khi rút được lá hợp lệ, người chơi **phải đánh ngay lá đó** và lượt kết thúc theo hiệu ứng của lá.
-- Nếu đã rút đủ 5 lá mà không ra lá hợp lệ, người chơi **mất lượt**.
+- Nếu đã rút đủ 3 lá mà không ra lá hợp lệ, người chơi **mất lượt**.
 - Nếu trong lúc rút mà bài trên tay chạm 27 lá, người chơi bị **Tới Số** ngay (mục 4).
+
+### 2.3 Đồng hồ lượt **[MỚI]**
+Mỗi lượt có **45 giây** (tính riêng cho mỗi lần phải ra quyết định: đánh/rút, đỡ phạt, chọn màu Vòng Quay). Hết giờ, hệ thống tự đánh thay người đó cho đến hết lượt.
 
 ## 3. Chuỗi Cộng Dồn (Thang Phạt Rút Bài)
 

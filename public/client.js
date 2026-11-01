@@ -2,6 +2,7 @@
 (function () {
   'use strict';
   const E = window.ToiBenEngine;
+  const Pace = window.ToiBenPace;
   const $ = id => document.getElementById(id);
   const socket = io();
   const store = {
@@ -12,7 +13,9 @@
   let S = null;            // last state from server
   let token = store.get('toiben_token');
   let emotes = [];
-  let lastLogLen = 0;
+  let timer = null;        // { seat, end, total } for the awaited decision
+  const queue = [];        // states waiting for the previous animations to finish
+  let busy = false;
 
   // ---------- card art ----------
   const KIND_FILE = { skip: 'skip', reverse: 'reverse', draw2: 'drawTwo', draw4: 'drawFour', discardAll: 'discardAll', skipEveryone: 'skipEveryone' };
@@ -37,11 +40,29 @@
   });
   socket.on('toast', t => toast(t.text, t.type));
   socket.on('state', s => {
-    const prev = S;
-    S = s;
-    render(prev);
-    playEvents(s.events || [], prev);
+    timer = s.timer ? { seat: s.timer.seat, end: performance.now() + s.timer.leftMs, total: s.timer.totalMs } : null;
+    queue.push(s);
+    pump();
   });
+
+  // States are shown one at a time: play the events' animations, then show the new table.
+  function pump() {
+    if (busy || !queue.length) return;
+    const s = queue.shift();
+    const prev = S;
+    const evs = s.events || [];
+    const instant = !prev || !prev.view || !s.view || s.status === 'lobby' || prev.round !== s.round ||
+      !evs.length || queue.length >= 3 || document.hidden;
+    if (instant) {
+      S = s; render(prev);
+      if (evs.length && !(queue.length >= 3) && !document.hidden) playEvents(s, prev);
+      pump();
+      return;
+    }
+    busy = true;
+    const total = playEvents(s, prev);
+    setTimeout(() => { S = s; render(prev); busy = false; pump(); }, total);
+  }
   socket.on('emote', e => {
     const pos = e.seat >= 0 ? seatCenter(e.seat) : { x: innerWidth / 2, y: innerHeight / 2 };
     FX.showEmote(e.name, pos.x, pos.y - 70);
@@ -148,6 +169,7 @@
           <span class="pname">${esc(s.name)}</span>
           <span class="count">${s.out ? 'TỚI SỐ' : s.count + ' lá'}</span>
           ${p.bot ? '<span class="tag">Bot</span>' : ''}${p.connected === false ? '<span class="tag warn">Mất mạng</span>' : ''}${p.auto && !p.bot ? '<span class="tag">Tự đánh</span>' : ''}
+          ${timerBadge(s.seat)}
         </div>`;
       if (S.me && S.me.host && !p.bot && !s.out) {
         el.title = 'Chủ phòng: bấm đúp để bật/tắt tự đánh cho ghế này';
@@ -157,12 +179,46 @@
     }
   }
 
-  function renderCenter() {
-    const v = S.view;
-    $('topCard').src = cardSrc(v.top);
-    $('colorRing').style.boxShadow = `0 0 0 6px ${COLOR_HEX[v.activeColor] || '#888'}, 0 0 30px 8px ${COLOR_HEX[v.activeColor] || '#888'}`;
+  // Stable pseudo-random spot for a card on the table, so it never jumps between renders.
+  function scatter(id) {
+    let h = (Math.imul(id + 1, 2654435761) ^ 0x9e3779b9) >>> 0;
+    const r = () => { h ^= h << 13; h >>>= 0; h ^= h >>> 17; h ^= h << 5; h >>>= 0; return h / 4294967296; };
+    const k = innerWidth < 700 ? 0.6 : 1;
+    return { dx: (r() - 0.5) * 76 * k, dy: (r() - 0.5) * 56 * k, rot: (r() - 0.5) * 60 };
+  }
+  const FADE = [1, 0.92, 0.78, 0.6, 0.42, 0.25, 0.1];
+  function pileCardWidth() { return innerWidth <= 700 ? 76 : Math.max(84, Math.min(130, innerWidth * 0.09)); }
+
+  function renderCenter(v = S.view) {
+    const col = COLOR_HEX[v.activeColor] || '#888';
+    $('center').style.setProperty('--active', col);
+    $('colorTag').textContent = 'Màu: ' + (E.COLOR_NAMES[v.activeColor] || '—');
     $('drawCount').textContent = v.drawCount;
-    $('dirRing').classList.toggle('ccw', v.direction < 0);
+    $('dirArrows').classList.toggle('ccw', v.direction < 0);
+    const box = $('pileCards');
+    const want = v.recent && v.recent.length ? v.recent : (v.top ? [v.top] : []);
+    const have = new Map([...box.children].map(el => [el.dataset.id, el]));
+    want.forEach((c, i) => {
+      const age = want.length - 1 - i;
+      let el = have.get(String(c.id));
+      if (!el) {
+        el = document.createElement('img');
+        el.className = 'card pile-card' + (S && S.view ? ' fresh' : '');
+        el.dataset.id = c.id;
+        el.src = cardSrc(c);
+        el.alt = E.cardName(c);
+        const sc = scatter(c.id);
+        el.style.transform = `translate(${sc.dx}px, ${sc.dy}px) rotate(${sc.rot}deg)`;
+        el.addEventListener('animationend', () => el.classList.remove('fresh'));
+        box.appendChild(el);
+      }
+      have.delete(String(c.id));
+      el._card = c;
+      el.style.zIndex = i + 1;
+      el.style.opacity = FADE[age] ?? 0;
+      el.classList.toggle('top', age === 0);
+    });
+    for (const el of have.values()) el.remove();
     const sb = $('stackBadge');
     if (v.stack && v.phase === 'stack') {
       sb.classList.remove('hidden');
@@ -206,8 +262,9 @@
       img.style.setProperty('--cw', cardW + 'px');
       img.style.left = `calc(50% - ${totalW / 2}px + ${i * step}px)`;
       img.style.zIndex = i;
-      img.title = E.cardName(c);
-      if (playable.has(c.id)) { img.classList.add('playable'); img.onclick = () => tryPlay(c); }
+      img._card = c;
+      img.dataset.tip = '1';
+      if (playable.has(c.id)) { img.classList.add('playable'); img.onclick = () => tryPlay(c, img); }
       else if (v.actor === mySeat()) img.classList.add('dim');
       box.appendChild(img);
     });
@@ -218,7 +275,7 @@
     if (me) {
       chip.className = 'seat-static' + (v.actor === me.seat && v.phase !== 'over' ? ' active' : '') + (!me.out && n >= 22 ? ' danger' : '');
       chip.innerHTML = `<div class="seat-info"><span class="avatar" style="background:${avatarColor(me.name)}">${me.out ? '💀' : initial(me.name)}</span>
-        <span class="pname">${esc(me.name)} (bạn)</span><span class="count">${me.out ? 'TỚI SỐ' : n + ' lá'}</span></div>`;
+        <span class="pname">${esc(me.name)} (bạn)</span><span class="count">${me.out ? 'TỚI SỐ' : n + ' lá'}</span>${timerBadge(me.seat)}</div>`;
     }
   }
   const ORDER = { red: 0, yellow: 1, green: 2, blue: 3, wild: 4 };
@@ -255,7 +312,7 @@
     if (endShownRound !== S.round) {
       endShownRound = S.round;
       clearTimeout(endTimer);
-      endTimer = setTimeout(() => $('roundEnd').classList.remove('hidden'), 3200);
+      endTimer = setTimeout(() => $('roundEnd').classList.remove('hidden'), 900);
     }
     const w = v.seats[v.winner];
     $('endTitle').textContent = v.winner === mySeat() ? '🏆 Bạn thắng!' : `🏆 ${w.name} thắng!`;
@@ -269,9 +326,13 @@
   }
 
   function render(prev) {
+    locked = false;
     renderLobby();
+    hideTip();
     if (!S.view || S.status === 'lobby') { $('roundEnd').classList.add('hidden'); return; }
-    renderSeats(); renderCenter(); renderHand(); renderActions(); renderLog(); renderRoundEnd();
+    // the server may have played for us (timer ran out): drop a stale colour/target prompt
+    if ($('modal').dataset.open === 'turn' && S.view.actor !== mySeat()) cancelModal();
+    renderSeats(); renderCenter(); renderHand(); renderActions(); renderLog(); renderRoundEnd(); tickTimer();
     if (S.view.phase === 'roulette' && S.view.roulette.victim === mySeat() && !$('modal').dataset.open) {
       chooseColor('Vòng Quay Tử Thần', 'Chọn một màu. Hệ thống sẽ lật bài đến khi ra đúng màu đó và bạn nhận hết.', false)
         .then(color => color && act({ type: 'rouletteColor', color }));
@@ -280,15 +341,25 @@
   addEventListener('resize', () => S && S.view && S.status !== 'lobby' && render());
 
   // ---------- actions ----------
-  function act(a) { socket.emit('act', a); }
+  // One action per shown state: wait for the server's answer (and its animation) before the next.
+  let locked = false;
+  const canAct = () => !locked && !busy && !queue.length;
+  function act(a) { if (!canAct()) return; locked = true; socket.emit('act', a); setTimeout(() => (locked = false), 4000); }
+  socket.on('toast', () => (locked = false));
   $('drawBtn').onclick = () => act({ type: 'draw' });
   $('drawPile').onclick = () => { if ($('drawPile').classList.contains('clickable')) act({ type: 'draw' }); };
   $('acceptBtn').onclick = () => act({ type: 'acceptStack' });
   $('toiBenBtn').onclick = () => act({ type: 'callToiBen' });
   $('logBtn').onclick = () => $('logPanel').classList.toggle('hidden');
   $('emoteBtn').onclick = () => $('emotePanel').classList.toggle('hidden');
+  $('helpBtn').onclick = openHelp;
+  $('lobbyHelpBtn').onclick = openHelp;
+  $('helpClose').onclick = () => $('help').classList.add('hidden');
+  $('help').onclick = e => { if (e.target === $('help')) $('help').classList.add('hidden'); };
+  addEventListener('keydown', e => { if (e.key === 'Escape') $('help').classList.add('hidden'); });
 
-  async function tryPlay(c) {
+  async function tryPlay(c, img) {
+    if (!canAct()) return;
     const a = { type: 'play', cardId: c.id };
     if (E.needsColor(c)) {
       a.color = await chooseColor('Chọn màu', `Bạn đánh ${E.cardName(c)}.`, true);
@@ -301,20 +372,24 @@
       a.target = await new Promise(res => pick('Tráo bài số 7', 'Chọn người để đổi ngẫu nhiên 1–5 lá:', opts, res, () => res(null)));
       if (a.target == null) return;
     }
+    if (img) img.classList.add('leaving');
     act(a);
   }
 
   // ---------- modal helpers ----------
+  let modalCancel = null;
   function openModal(title, text, cancellable, onCancel) {
     $('modalTitle').textContent = title;
     $('modalText').textContent = text;
     $('modalBody').innerHTML = '';
     $('modal').classList.remove('hidden');
-    $('modal').dataset.open = '1';
+    $('modal').dataset.open = 'turn';
     $('modalCancel').classList.toggle('hidden', !cancellable);
-    $('modalCancel').onclick = () => { closeModal(); onCancel && onCancel(); };
+    modalCancel = onCancel || null;
+    $('modalCancel').onclick = cancelModal;
   }
-  function closeModal() { $('modal').classList.add('hidden'); delete $('modal').dataset.open; }
+  function closeModal() { $('modal').classList.add('hidden'); delete $('modal').dataset.open; modalCancel = null; }
+  function cancelModal() { const f = modalCancel; closeModal(); f && f(); }
 
   function chooseColor(title, text, cancellable) {
     return new Promise(res => {
@@ -370,74 +445,221 @@
   }).observe($('emotePanel'), { attributes: true, attributeFilter: ['class'] });
 
   // ---------- event animations ----------
-  function playEvents(events, prev) {
-    const discard = () => centerOf($('discardPile'));
-    const deck = () => centerOf($('drawPile'));
-    const seatPos = s => (s === mySeat() ? { x: innerWidth / 2, y: innerHeight - 90 } : seatCenter(s));
-    let delay = 0;
-    const later = (fn, ms = 0) => setTimeout(fn, (delay += ms));
-    for (const e of events) {
+  // Events play one after another; each one gets Pace.eventMs(e) of screen time.
+  // Returns the total time, after which the caller shows the new table state.
+  function playEvents(s, prev) {
+    const v = s.view;
+    const nameOf = i => (v && v.seats[i] ? v.seats[i].name : '');
+    const pileC = () => centerOf($('discardPile'));
+    const deck = () => centerOf($('drawPile').querySelector('.d1'));
+    const seatPos = st => (st === mySeat() ? { x: innerWidth / 2, y: innerHeight - 90 } : seatCenter(st));
+    let t = 0;
+    const at = (ms, fn) => { const when = t + ms; setTimeout(fn, when); };
+    for (const e of s.events || []) {
       switch (e.type) {
-        case 'roundStart': FX.bigText('VÁN MỚI!', 'gold'); break;
+        case 'roundStart': at(0, () => FX.bigText('VÁN MỚI!', 'gold')); break;
         case 'play': {
-          const from = seatPos(e.seat), to = discard();
-          FX.fly(cardSrc(e.card), from, to, { width: 110, fromRot: -20, toRot: 0, fade: true });
-          later(() => FX.sprite('impact', to.x, to.y, { scale: 2.5 }), 380);
-          if (E.isWild(e.card) && E.needsColor(e.card)) later(() => FX.sprite('light', to.x, to.y, { scale: 1.6 }), 100);
+          at(0, () => {
+            const from = seatPos(e.seat), c = pileC(), sc = scatter(e.card.id);
+            const to = { x: c.x + sc.dx, y: c.y + sc.dy };
+            FX.fly(cardSrc(e.card), from, to, { width: pileCardWidth(), ms: 620, fromRot: -25, toRot: sc.rot, fromScale: 0.8, fade: false });
+            setTimeout(() => {
+              renderCenter(v);
+              FX.sprite('impact', to.x, to.y, { scale: 2.2 });
+              if (E.needsColor(e.card)) FX.sprite('light', to.x, to.y, { scale: 1.6 });
+            }, 620);
+          });
           break;
         }
         case 'discardAll': if (e.count) {
-          const from = seatPos(e.seat), to = discard();
-          for (let i = 0; i < Math.min(e.count, 10); i++) setTimeout(() => FX.fly(BACK, from, to, { width: 80, fromRot: i * 20 }), delay + i * 70);
-          later(() => FX.sprite('smoke', to.x, to.y, { scale: 3 }), 300);
-          FX.bigText(`XẢ ${e.count + 1} LÁ!`, 'small');
+          at(0, () => {
+            const from = seatPos(e.seat), to = pileC();
+            FX.bigText(`XẢ ${e.count + 1} LÁ!`, 'small');
+            for (let i = 0; i < Math.min(e.count, 10); i++) setTimeout(() => FX.fly(BACK, from, to, { width: 80, ms: 550, fromRot: i * 20 }), i * 110);
+          });
+          at(Pace.eventMs(e) - 600, () => { const c = pileC(); FX.sprite('smoke', c.x, c.y, { scale: 3 }); });
         } break;
-        case 'skip': for (const s of e.seats) { const p = seatPos(s); later(() => FX.sprite('skip', p.x, p.y, { scale: 1.6, maxFrames: 24, fps: 24 }), 0); } delay += 200; break;
-        case 'reverse': { const c = discard(); later(() => FX.sprite('warp', c.x, c.y, { scale: 3 }), 200); FX.bigText('ĐẢO CHIỀU!', 'small'); break; }
-        case 'stack': {
+        case 'skip': at(0, () => {
+          for (const st of e.seats) { const p = seatPos(st); FX.sprite('skip', p.x, p.y, { scale: 1.6, maxFrames: 24, fps: 20 }); }
+          FX.bigText(e.seats.length > 1 ? 'CẤM CẢ BÀN!' : `${nameOf(e.seats[0])} MẤT LƯỢT`, 'small', 1300);
+        }); break;
+        case 'reverse': at(0, () => {
+          const c = pileC();
+          $('dirArrows').classList.toggle('ccw', e.direction < 0);
+          $('dirArrows').classList.add('flash');
+          setTimeout(() => $('dirArrows').classList.remove('flash'), 1000);
+          FX.sprite('warp', c.x, c.y, { scale: 3 });
+          FX.bigText('ĐẢO CHIỀU!', 'small');
+        }); break;
+        case 'stack': at(0, () => {
           const p = seatPos(e.target);
-          if (e.value >= 10) { later(() => { FX.sprite('boom10', p.x, p.y, { scale: 2.5 }); FX.shake(600); }, 350); FX.bigText(`+${e.total}`, 'red huge'); }
-          else if (e.value >= 6) { later(() => { FX.sprite('bolt', p.x, p.y - 60, { scale: 2.5 }); FX.sprite('lightning', p.x, p.y, { scale: 3 }); FX.shake(350); }, 350); FX.bigText(`+${e.total}`, 'red'); }
-          else { later(() => FX.sprite('hit', p.x, p.y, { scale: 3 }), 350); FX.bigText(`+${e.total}`, 'red small'); }
-          if (prev && prev.view && prev.view.phase === 'stack') later(() => FX.sprite('shield', seatPos(e.seat).x, seatPos(e.seat).y, { scale: 1.5 }), 0);
-          break;
-        }
-        case 'takeStack': case 'draw': {
+          if (prev && prev.view && prev.view.phase === 'stack') { const q = seatPos(e.seat); FX.sprite('shield', q.x, q.y, { scale: 1.5 }); }
+          if (e.value >= 10) { FX.bigText(`+${e.total}`, 'red huge'); setTimeout(() => { FX.sprite('boom10', p.x, p.y, { scale: 2.5 }); FX.shake(600); }, 350); }
+          else if (e.value >= 6) { FX.bigText(`+${e.total}`, 'red'); setTimeout(() => { FX.sprite('bolt', p.x, p.y - 60, { scale: 2.5 }); FX.sprite('lightning', p.x, p.y, { scale: 3 }); FX.shake(350); }, 350); }
+          else { FX.bigText(`+${e.total}`, 'red small'); setTimeout(() => FX.sprite('hit', p.x, p.y, { scale: 3 }), 350); }
+        }); break;
+        case 'takeStack': case 'draw': at(0, () => {
           const p = seatPos(e.seat), d = deck();
           const n = Math.min(e.count, 12);
-          for (let i = 0; i < n; i++) setTimeout(() => FX.fly(BACK, d, p, { width: 70, ms: 350 }), delay + i * 60);
-          if (e.type === 'takeStack') later(() => FX.sprite('absorb', p.x, p.y, { scale: 1.4 }), 200);
+          for (let i = 0; i < n; i++) setTimeout(() => FX.fly(BACK, d, p, { width: 70, ms: 450 }), i * 120);
+          if (e.type === 'takeStack') { FX.bigText(`${nameOf(e.seat)} nhận ${e.count} lá`, 'red small', 1300); setTimeout(() => FX.sprite('absorb', p.x, p.y, { scale: 1.4 }), n * 120); }
+        }); break;
+        case 'drawFail': at(0, () => FX.bigText(`Rút ${v ? v.maxDraw : 3} lá không ra: MẤT LƯỢT`, 'small', 1300)); break;
+        case 'zero': {
+          const same = e.n === 0 || (e.n === 2 && e.order.length === 2);
+          const caption = e.n === 0 ? 'Không ai đổi bài' : same ? 'Chuyển 2 lần: bài về chỗ cũ' : `Chuyển bài ${e.n} lần theo chiều đánh`;
+          at(0, () => { const c = pileC(); FX.wheel('Số 0: chuyển bài', [0, 1, 2], e.n, c.x, c.y, { caption }); });
+          for (let pass = 0; pass < e.n; pass++) {
+            at(Pace.WHEEL_MS + pass * 1300, () => {
+              FX.bigText(`Chuyển lần ${pass + 1}`, 'small', 1100);
+              e.order.forEach((st, i) => {
+                const a = seatPos(st), b = seatPos(e.order[(i + 1) % e.order.length]);
+                for (let j = 0; j < 3; j++) setTimeout(() => FX.fly(BACK, a, b, { width: 74, ms: 900, fromRot: j * 12 }), j * 90);
+              });
+            });
+          }
           break;
         }
-        case 'drawFail': FX.bigText('MẤT LƯỢT', 'small'); break;
-        case 'zero': { const c = discard(); FX.wheel('Số 0: chuyển bài', [0, 1, 2], e.n, c.x, c.y - 170);
-          if (e.n > 0) setTimeout(() => { for (const s of e.order) { const a = seatPos(s), b = seatPos(e.order[(e.order.indexOf(s) + 1) % e.order.length]); FX.fly(BACK, a, b, { width: 80, ms: 700 }); } }, 1800);
-          break; }
-        case 'seven': { const c = discard(); FX.wheel('Số 7: tráo', [1, 2, 3, 4, 5], e.K, c.x, c.y - 170);
-          setTimeout(() => { const a = seatPos(e.seat), b = seatPos(e.target); for (let i = 0; i < e.k; i++) { setTimeout(() => { FX.fly(BACK, a, b, { width: 70, ms: 600 }); FX.fly(BACK, b, a, { width: 70, ms: 600 }); }, i * 120); } }, 1800);
-          break; }
-        case 'rouletteStart': { const c = discard(); FX.sprite('sparkle2', c.x, c.y, { scale: 4 }); FX.bigText('VÒNG QUAY TỬ THẦN', 'purple'); break; }
+        case 'seven': {
+          const caption = `${nameOf(e.seat)} ⇄ ${nameOf(e.target)}: đổi ${e.k} lá` + (e.k < e.K ? ` (không đủ ${e.K})` : '');
+          at(0, () => { const c = pileC(); FX.wheel('Số 7: số lá tráo', [1, 2, 3, 4, 5], e.K, c.x, c.y, { caption }); });
+          at(Pace.WHEEL_MS, () => {
+            const a = seatPos(e.seat), b = seatPos(e.target);
+            FX.sprite('light', a.x, a.y, { scale: 1.6 }); FX.sprite('light', b.x, b.y, { scale: 1.6 });
+          });
+          at(Pace.WHEEL_MS + 700, () => {
+            const a = seatPos(e.seat), b = seatPos(e.target);
+            for (let i = 0; i < e.k; i++) setTimeout(() => { FX.fly(BACK, a, b, { width: 74, ms: 900 }); FX.fly(BACK, b, a, { width: 74, ms: 900 }); }, i * 260);
+          });
+          break;
+        }
+        case 'rouletteStart': at(0, () => { const c = pileC(); FX.sprite('sparkle2', c.x, c.y, { scale: 4 }); FX.bigText('VÒNG QUAY TỬ THẦN', 'purple', 1500); }); break;
         case 'roulette': {
-          const c = discard(), p = seatPos(e.seat);
-          e.flipped.forEach((card, i) => setTimeout(() => FX.fly(cardSrc(card), c, p, { width: 100, ms: 500, fromScale: 1.3 }), delay + i * 220));
-          later(() => FX.sprite('sparkle', p.x, p.y, { scale: 3 }), e.flipped.length * 220);
-          FX.bigText(`Lật ${e.flipped.length} lá!`, 'purple small');
+          at(0, () => FX.bigText(`${nameOf(e.seat)} chọn ${E.COLOR_NAMES[e.color]}`, 'purple small', 1200));
+          e.flipped.forEach((card, i) => at(600 + i * 380, () => {
+            const c = pileC(), p = seatPos(e.seat);
+            FX.fly(cardSrc(card), c, p, { width: 100, ms: 600, fromScale: 1.3 });
+          }));
+          at(600 + e.flipped.length * 380, () => { const p = seatPos(e.seat); FX.sprite('sparkle', p.x, p.y, { scale: 3 }); FX.bigText(`Lật ${e.flipped.length} lá!`, 'purple small', 1100); });
           break;
         }
-        case 'knockout': { const p = seatPos(e.seat);
-          later(() => { FX.sprite('koBoom', p.x, p.y, { scale: 3 }); FX.sprite('skull', p.x, p.y - 30, { scale: 3 }); FX.shake(700); FX.bigText(`${S.view.seats[e.seat].name}: TỚI SỐ!`, 'red huge', 2000); }, 300);
-          break; }
-        case 'lastCard': { const p = seatPos(e.seat); FX.sprite('heartbeat', p.x, p.y - 50, { scale: 2 }); break; }
-        case 'toiBen': { const p = seatPos(e.seat); FX.sprite('firework', p.x, p.y, { scale: 3 }); FX.bigText('TỚI BẾN!', 'gold huge'); break; }
-        case 'reshuffle': FX.bigText('Trộn lại bài', 'small'); break;
-        case 'win': { const p = seatPos(e.seat);
-          later(() => { FX.sprite('firework2', p.x, p.y, { scale: 4 }); FX.sprite('crown', p.x, p.y - 80, { scale: 3, maxFrames: 30 });
-            FX.bigText(e.seat === mySeat() ? 'CHIẾN THẮNG!' : `${S.view.seats[e.seat].name} THẮNG!`, 'gold huge', 2500); }, 600);
-          if (e.seat !== mySeat() && mySeat() >= 0) later(() => FX.sprite('gameOver', innerWidth / 2, innerHeight * 0.3, { scale: 1.5, maxFrames: 30 }), 1500);
-          break; }
+        case 'knockout': at(200, () => {
+          const p = seatPos(e.seat);
+          FX.sprite('koBoom', p.x, p.y, { scale: 3 }); FX.sprite('skull', p.x, p.y - 30, { scale: 3 }); FX.shake(700);
+          FX.bigText(`${nameOf(e.seat)}: TỚI SỐ!`, 'red huge', 2000);
+        }); break;
+        case 'lastCard': at(0, () => { const p = seatPos(e.seat); FX.sprite('heartbeat', p.x, p.y - 50, { scale: 2 }); }); break;
+        case 'toiBen': at(0, () => { const p = seatPos(e.seat); FX.sprite('firework', p.x, p.y, { scale: 3 }); FX.bigText('TỚI BẾN!', 'gold huge'); }); break;
+        case 'reshuffle': at(0, () => FX.bigText('Trộn lại bài', 'small')); break;
+        case 'win': at(0, () => {
+          const p = seatPos(e.seat);
+          FX.sprite('firework2', p.x, p.y, { scale: 4 }); FX.sprite('crown', p.x, p.y - 80, { scale: 3, maxFrames: 30 });
+          FX.bigText(e.seat === mySeat() ? 'CHIẾN THẮNG!' : `${nameOf(e.seat)} THẮNG!`, 'gold huge', 2500);
+          if (e.seat !== mySeat() && mySeat() >= 0) setTimeout(() => FX.sprite('gameOver', innerWidth / 2, innerHeight * 0.3, { scale: 1.5, maxFrames: 30 }), 900);
+        }); break;
       }
+      t += Pace.eventMs(e);
+    }
+    return t;
+  }
+
+  // ---------- turn timer ----------
+  function timerLeft(seat) {
+    if (!timer || !S || !S.view || timer.seat !== seat || S.view.actor !== seat || S.view.phase === 'over') return null;
+    return Math.max(0, timer.end - performance.now());
+  }
+  function timerBadge(seat) {
+    return timerLeft(seat) == null ? '' : `<span class="tmr" data-seat="${seat}"><b></b></span>`;
+  }
+  function tickTimer() {
+    if (!S || !S.view) return;
+    for (const el of document.querySelectorAll('.tmr')) {
+      const left = timerLeft(Number(el.dataset.seat));
+      if (left == null) { el.remove(); continue; }
+      const sec = Math.min(Math.ceil(left / 1000), Math.round(timer.total / 1000));
+      el.querySelector('b').textContent = sec;
+      el.style.setProperty('--p', Math.min(1, left / timer.total));
+      el.classList.toggle('low', sec <= 10);
+    }
+    const mine = timerLeft(mySeat());
+    const st = $('status');
+    if (mine == null) delete st.dataset.left;
+    else {
+      const sec = Math.min(Math.ceil(mine / 1000), Math.round(timer.total / 1000));
+      st.dataset.left = sec;
+      st.classList.toggle('low', sec <= 10);
     }
   }
+  setInterval(tickTimer, 250);
+
+  // ---------- card help + tooltips ----------
+  const EFFECT = {
+    number: 'Không có hiệu ứng. Đánh khi trùng màu hoặc trùng số.',
+    zero: 'Quay ngẫu nhiên 0–2. Mỗi lần, mọi người chuyển toàn bộ bài cho người kế tiếp theo chiều đánh.',
+    seven: 'Chọn 1 đối thủ. Hệ thống quay K (1–5) rồi đổi ngẫu nhiên K lá giữa hai bên (ít hơn nếu một bên không đủ bài).',
+    skip: 'Người kế tiếp mất lượt.',
+    reverse: 'Đảo chiều vòng đánh. Còn 2 người thì như Cấm Lượt.',
+    draw2: 'Cộng +2 vào chuỗi phạt. Người bị nhắm đỡ bằng lá phạt từ +2 trở lên, hoặc rút hết.',
+    draw4: 'Lá phạt +4 có màu. Trong chuỗi, đè được lên +2/+4 bất kể màu.',
+    discardAll: 'Xả luôn mọi lá cùng màu trên tay.',
+    skipEveryone: 'Mọi người khác mất lượt, bạn đánh tiếp ngay.',
+    wildReverseDraw4: 'Chọn màu, đảo chiều, người kế tiếp theo chiều mới chịu +4. Còn 2 người thì phạt quay về chính bạn.',
+    wildDraw6: 'Chọn màu, cộng +6 vào chuỗi. Chỉ đỡ được bằng +6 hoặc +10.',
+    wildDraw10: 'Chọn màu, cộng +10 vào chuỗi. Chỉ đỡ được bằng +10.',
+    wildRoulette: 'Người kế tiếp chọn 1 màu, lật bài đến khi ra màu đó, nhận hết và mất lượt. Không đỡ được, không dùng để đỡ.'
+  };
+  const effectOf = c => c.kind === 'number' ? (c.value === 0 ? EFFECT.zero : c.value === 7 ? EFFECT.seven : EFFECT.number) : EFFECT[c.kind];
+  const HELP_CARDS = [
+    [{ color: 'red', kind: 'number', value: 5 }, 'Lá số 1–6, 8, 9', 'number'],
+    [{ color: 'yellow', kind: 'number', value: 0 }, 'Số 0: Chuyển Bài', 'zero'],
+    [{ color: 'green', kind: 'number', value: 7 }, 'Số 7: Tráo Bài', 'seven'],
+    [{ color: 'red', kind: 'skip' }, 'Cấm Lượt', 'skip'],
+    [{ color: 'blue', kind: 'reverse' }, 'Đảo Chiều', 'reverse'],
+    [{ color: 'yellow', kind: 'draw2' }, 'Rút Hai (+2)', 'draw2'],
+    [{ color: 'green', kind: 'draw4' }, 'Rút Bốn (+4)', 'draw4'],
+    [{ color: 'blue', kind: 'discardAll' }, 'Xả Toàn Bộ', 'discardAll'],
+    [{ color: 'red', kind: 'skipEveryone' }, 'Cấm Cả Bàn', 'skipEveryone'],
+    [{ color: 'wild', kind: 'wildReverseDraw4' }, 'Đa Sắc Đảo Chiều +4', 'wildReverseDraw4'],
+    [{ color: 'wild', kind: 'wildDraw6' }, 'Đa Sắc +6', 'wildDraw6'],
+    [{ color: 'wild', kind: 'wildDraw10' }, 'Đa Sắc +10', 'wildDraw10'],
+    [{ color: 'wild', kind: 'wildRoulette' }, 'Vòng Quay Tử Thần', 'wildRoulette']
+  ];
+  function openHelp() {
+    $('helpRules').innerHTML = `<ul>
+      <li>Đánh lá trùng <b>màu</b>, trùng <b>số/ký hiệu</b>, hoặc lá <b>Đa Sắc</b>.</li>
+      <li>Không đánh được thì rút từng lá, tối đa <b>${E.MAX_DRAW} lá</b>. Rút trúng lá đánh được thì phải đánh ngay; rút đủ mà không ra thì mất lượt.</li>
+      <li>Lá phạt cộng dồn: đỡ bằng lá phạt <b>bằng hoặc lớn hơn</b> (+2 ≤ +4 ≤ +6 ≤ +10), không cần trùng màu.</li>
+      <li>Chạm <b>${E.KNOCKOUT} lá</b> là <b>Tới Số</b> (bị loại). Hết bài hoặc là người cuối cùng còn sống thì thắng.</li>
+      <li>Mỗi lượt có <b>${Math.round(Pace.TURN_MS / 1000)} giây</b>; hết giờ hệ thống tự đánh thay.</li>
+    </ul>`;
+    $('helpGrid').innerHTML = HELP_CARDS.map(([c, name, key]) => `
+      <div class="help-item"><img src="${cardSrc(c)}" alt=""><div><h4>${name}</h4><p>${EFFECT[key]}</p>
+      <span class="pts">${E.cardPoints(c)} điểm khi kẹt trên tay</span></div></div>`).join('');
+    $('help').classList.remove('hidden');
+  }
+
+  function showTip(el) {
+    const c = el._card;
+    if (!c) return;
+    const tip = $('tip');
+    const col = c.color === 'wild' ? 'linear-gradient(90deg,#de0c0a,#e0af06,#08682c,#063c9f)' : COLOR_HEX[c.color];
+    const playable = el.classList.contains('playable');
+    tip.innerHTML = `<div class="tip-head"><span class="tip-dot" style="background:${col}"></span><h4>${esc(E.cardName(c))}</h4></div>
+      <p>${effectOf(c)}</p>
+      <div class="tip-foot"><span>${E.cardPoints(c)} điểm</span>${el.classList.contains('hand-card') ? (playable ? '<span class="ok">Đánh được</span>' : '<span class="no">Chưa đánh được</span>') : ''}</div>`;
+    tip.classList.remove('hidden');
+    const r = el.getBoundingClientRect();
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let x = r.left + r.width / 2 - tw / 2, y = r.top - th - 14;
+    if (y < 8) y = r.bottom + 14;
+    x = Math.max(8, Math.min(innerWidth - tw - 8, x));
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  function hideTip() { $('tip').classList.add('hidden'); }
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest && e.target.closest('.hand-card, .pile-card.top');
+    if (el && matchMedia('(hover: hover)').matches) showTip(el); else hideTip();
+  });
 
   // ---------- utils ----------
   function toast(text, type) {
