@@ -1,0 +1,19 @@
+# secrets
+GITHUB_TOKEN.txt
+*.token
+.env
+
+# dependencies / runtime
+node_modules/
+data/
+
+# the full effect pack stays local (license forbids redistributing it);
+# tools/prepare_fx.py copies the effects the game uses into assets/fx/
+assets/Super Pixel Effects Gigapack (Free Version)/
+
+# working files
+assets/cards/backup/
+assets/cards/normalized/
+research/reference/
+research/uno_show_em_no_mercy_complete_gameplay_web_architecture_specification.md
+__pycache__/

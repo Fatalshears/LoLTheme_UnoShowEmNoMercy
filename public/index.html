@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chơi Tới Bến</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Lobby -->
+    <section id="lobby" class="screen">
+      <div class="lobby-card">
+        <img class="logo" src="/assets/cards/wild_backside.jpg" alt="Chơi Tới Bến">
+        <div id="joinBox">
+          <label for="nameInput">Tên của bạn</label>
+          <div class="row">
+            <input id="nameInput" maxlength="16" placeholder="VD: Faker" autocomplete="off">
+            <button id="joinBtn" class="btn primary">Vào bàn</button>
+          </div>
+        </div>
+        <div id="lobbyInfo" class="hidden">
+          <h2>Phòng chờ <span id="lobbyCount"></span></h2>
+          <ul id="lobbyPlayers"></ul>
+          <div id="hostControls" class="row hidden">
+            <button id="addBotBtn" class="btn">+ Thêm bot</button>
+            <button id="startBtn" class="btn primary">Bắt đầu</button>
+          </div>
+          <p id="waitHost" class="muted hidden">Đang chờ chủ phòng bắt đầu…</p>
+          <p class="muted small">Người khác trong mạng LAN mở cùng địa chỉ trên trình duyệt để vào bàn (2–8 người).</p>
+        </div>
+        <p id="spectatorNote" class="muted hidden">Ván đang diễn ra, bạn đang xem. <button id="claimBtn" class="link">Lấy lại ghế cũ?</button></p>
+      </div>
+    </section>
+
+    <!-- Table -->
+    <section id="table" class="screen hidden">
+      <div id="seats"></div>
+      <div id="center">
+        <div id="dirRing" class="dir-ring"><span>➜</span></div>
+        <div class="pile" id="drawPile" title="Rút bài">
+          <img src="/assets/cards/wild_backside.jpg" alt="Chồng rút" class="card back">
+          <div class="pile-count" id="drawCount"></div>
+        </div>
+        <div class="pile" id="discardPile">
+          <div id="colorRing"></div>
+          <img id="topCard" class="card" alt="Lá trên cùng">
+        </div>
+        <div id="stackBadge" class="hidden"></div>
+      </div>
+      <div id="status"></div>
+      <div id="actionBar">
+        <button id="drawBtn" class="btn">Rút bài</button>
+        <button id="acceptBtn" class="btn danger hidden">Chịu phạt</button>
+        <button id="toiBenBtn" class="btn gold hidden">TỚI BẾN!</button>
+        <button id="emoteBtn" class="btn icon" title="Biểu cảm">😀</button>
+        <button id="logBtn" class="btn icon" title="Nhật ký">📜</button>
+      </div>
+      <div id="meChip" class="hidden"></div>
+      <div id="hand"></div>
+      <aside id="logPanel" class="hidden"><h3>Nhật ký</h3><ol id="logList"></ol></aside>
+      <div id="emotePanel" class="hidden"></div>
+    </section>
+
+    <div id="fxLayer"></div>
+    <div id="bigText"></div>
+
+    <div id="modal" class="hidden">
+      <div class="modal-card">
+        <h2 id="modalTitle"></h2>
+        <p id="modalText" class="muted"></p>
+        <div id="modalBody"></div>
+        <button id="modalCancel" class="btn subtle">Huỷ</button>
+      </div>
+    </div>
+
+    <div id="roundEnd" class="hidden">
+      <div class="modal-card wide">
+        <h2 id="endTitle"></h2>
+        <p id="endText"></p>
+        <table id="scoreTable"></table>
+        <div id="endHost" class="row hidden">
+          <button id="nextRoundBtn" class="btn primary">Ván tiếp theo</button>
+          <button id="lobbyBtn" class="btn">Về phòng chờ</button>
+        </div>
+        <p id="endWait" class="muted hidden">Chờ chủ phòng bắt đầu ván tiếp…</p>
+      </div>
+    </div>
+
+    <div id="toast"></div>
+    <footer id="credits">Hiệu ứng: Super Pixel Effects Gigapack - Will Tice / unTied Games</footer>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/vendor/lottie.min.js"></script>
+  <script src="/shared/engine.js"></script>
+  <script src="fx.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>
