@@ -12,76 +12,104 @@
   <div id="app">
     <!-- Lobby -->
     <section id="lobby" class="screen">
-      <div class="lobby-card">
-        <img class="logo" src="/assets/cards/wild_backside.jpg" alt="Chơi Tới Bến">
-        <div id="joinBox">
+      <div class="menu-bg" aria-hidden="true">
+        <img class="float f1" src="/assets/cards/red_skipEveryone.jpg" alt="">
+        <img class="float f2" src="/assets/cards/wild_draw10.jpg" alt="">
+        <img class="float f3" src="/assets/cards/blue_reverse.jpg" alt="">
+        <img class="float f4" src="/assets/cards/yellow0.jpg" alt="">
+        <img class="float f5" src="/assets/cards/wild_colorRoulette.jpg" alt="">
+        <img class="float f6" src="/assets/cards/green7.jpg" alt="">
+      </div>
+      <div class="menu">
+        <div class="brand">
+          <div class="brand-fan">
+            <img src="/assets/cards/red_backside.jpg" alt="">
+            <img src="/assets/cards/blue_backside.jpg" alt="">
+            <img src="/assets/cards/yellow_backside.jpg" alt="">
+            <img src="/assets/cards/green_backside.jpg" alt="">
+            <img src="/assets/cards/wild_backside.jpg" alt="Chơi Tới Bến">
+          </div>
+          <h1 class="title">CHƠI TỚI BẾN</h1>
+          <p class="tagline">Xả bài sinh tồn · 2–8 người · chơi qua mạng LAN</p>
+        </div>
+        <div id="joinBox" class="menu-panel">
           <label for="nameInput">Tên của bạn</label>
-          <div class="row">
-            <input id="nameInput" maxlength="16" placeholder="VD: Faker" autocomplete="off">
-            <button id="joinBtn" class="btn primary">Vào bàn</button>
-          </div>
+          <input id="nameInput" maxlength="16" placeholder="VD: Faker" autocomplete="off">
+          <button id="joinBtn" class="btn primary xl">VÀO BÀN</button>
+          <button id="menuRulesBtn" class="btn ghost">Luật chơi &amp; lá bài</button>
         </div>
-        <div id="lobbyInfo" class="hidden">
-          <h2>Phòng chờ <span id="lobbyCount"></span></h2>
+        <div id="lobbyInfo" class="menu-panel wide hidden">
+          <div class="panel-head"><h2>Phòng chờ</h2><span id="lobbyCount" class="pill"></span></div>
           <ul id="lobbyPlayers"></ul>
-          <div id="hostControls" class="row hidden">
+          <div id="hostControls" class="row center hidden">
             <button id="addBotBtn" class="btn">+ Thêm bot</button>
-            <button id="startBtn" class="btn primary">Bắt đầu</button>
+            <button id="startBtn" class="btn primary xl">BẮT ĐẦU</button>
+            <button id="closeRoomBtn" class="btn subtle danger-text">Giải tán phòng</button>
           </div>
-          <p id="waitHost" class="muted hidden">Đang chờ chủ phòng bắt đầu…</p>
-          <p class="muted small"><button id="lobbyHelpBtn" class="link">Xem hiệu ứng các lá bài</button></p>
-          <p class="muted small">Người khác trong mạng LAN mở cùng địa chỉ trên trình duyệt để vào bàn (2–8 người).</p>
+          <p id="waitHost" class="muted center hidden">Đang chờ chủ phòng bắt đầu…</p>
+          <p class="muted small center"><button id="lobbyHelpBtn" class="link">Luật chơi &amp; lá bài</button> · Người khác trong mạng LAN mở cùng địa chỉ để vào bàn.</p>
         </div>
-        <p id="spectatorNote" class="muted hidden">Ván đang diễn ra, bạn đang xem. <button id="claimBtn" class="link">Lấy lại ghế cũ?</button></p>
+        <p id="spectatorNote" class="menu-panel muted hidden">Ván đang diễn ra, bạn đang xem. <button id="claimBtn" class="link">Lấy lại ghế cũ?</button></p>
       </div>
     </section>
 
     <!-- Table -->
     <section id="table" class="screen hidden">
-      <div id="seats"></div>
-      <div id="drawPile" class="deck">
-        <div class="deck-stack">
-          <img src="/assets/cards/wild_backside.jpg" alt="" class="card back d3">
-          <img src="/assets/cards/wild_backside.jpg" alt="" class="card back d2">
-          <img src="/assets/cards/wild_backside.jpg" alt="Chồng rút" class="card back d1">
+      <div id="board">
+        <div id="seats"></div>
+        <div id="drawPile" class="deck">
+          <div class="deck-stack">
+            <img src="/assets/cards/wild_backside.jpg" alt="" class="card back d3">
+            <img src="/assets/cards/wild_backside.jpg" alt="" class="card back d2">
+            <img src="/assets/cards/wild_backside.jpg" alt="Chồng rút" class="card back d1">
+          </div>
+          <div class="deck-label">Chồng rút · <b id="drawCount"></b></div>
         </div>
-        <div class="deck-label">Chồng rút · <b id="drawCount"></b></div>
+        <div id="center">
+          <div id="dirArrows"><div class="flip">
+            <svg viewBox="0 0 200 200" aria-hidden="true">
+              <defs>
+                <linearGradient id="arrowGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#ffd25e"/><stop offset=".55" stop-color="#ff8a1a"/><stop offset="1" stop-color="#ff5a00"/>
+                </linearGradient>
+                <marker id="arrowHead" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" viewBox="0 0 30 30" refX="7" refY="15" orient="auto">
+                  <path d="M1,1 L29,15 L1,29 L7,15 z" fill="#ff8a1a" stroke="#3a1600" stroke-width="2.5" stroke-linejoin="round"/>
+                </marker>
+              </defs>
+              <path class="arc-outline" d="M23.87 64.5 A84 84 0 0 1 176.13 64.5"/>
+              <path class="arc-outline" d="M176.13 135.5 A84 84 0 0 1 23.87 135.5"/>
+              <path class="arc" d="M23.87 64.5 A84 84 0 0 1 176.13 64.5" marker-end="url(#arrowHead)"/>
+              <path class="arc" d="M176.13 135.5 A84 84 0 0 1 23.87 135.5" marker-end="url(#arrowHead)"/>
+            </svg>
+          </div></div>
+          <div id="colorAura"></div>
+          <div id="discardPile"><div id="pileCards"></div></div>
+          <div id="colorTag"></div>
+          <div id="stackBadge" class="hidden"></div>
+        </div>
       </div>
-      <div id="center">
-        <div id="dirArrows"><div class="flip">
-          <svg viewBox="0 0 200 200" aria-hidden="true">
-            <defs>
-              <linearGradient id="arrowGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#ffd25e"/><stop offset=".55" stop-color="#ff8a1a"/><stop offset="1" stop-color="#ff5a00"/>
-              </linearGradient>
-              <marker id="arrowHead" markerUnits="userSpaceOnUse" markerWidth="30" markerHeight="30" viewBox="0 0 30 30" refX="7" refY="15" orient="auto">
-                <path d="M1,1 L29,15 L1,29 L7,15 z" fill="#ff8a1a" stroke="#3a1600" stroke-width="2.5" stroke-linejoin="round"/>
-              </marker>
-            </defs>
-            <path class="arc-outline" d="M23.87 64.5 A84 84 0 0 1 176.13 64.5"/>
-            <path class="arc-outline" d="M176.13 135.5 A84 84 0 0 1 23.87 135.5"/>
-            <path class="arc" d="M23.87 64.5 A84 84 0 0 1 176.13 64.5" marker-end="url(#arrowHead)"/>
-            <path class="arc" d="M176.13 135.5 A84 84 0 0 1 23.87 135.5" marker-end="url(#arrowHead)"/>
-          </svg>
-        </div></div>
-        <div id="colorAura"></div>
-        <div id="discardPile"><div id="pileCards"></div></div>
-        <div id="colorTag"></div>
-        <div id="stackBadge" class="hidden"></div>
+      <div id="tray">
+        <div id="status"></div>
+        <div id="hand"></div>
+        <div id="actionBar">
+          <button id="drawBtn" class="btn">Rút bài</button>
+          <button id="acceptBtn" class="btn danger hidden">Chịu phạt</button>
+          <button id="toiBenBtn" class="btn gold hidden">TỚI BẾN!</button>
+          <div class="icon-row">
+            <button id="helpBtn" class="btn icon help" title="Tra cứu lá bài">?</button>
+            <button id="emoteBtn" class="btn icon" title="Biểu cảm">😀</button>
+            <button id="hostBtn" class="btn icon hidden" title="Chủ phòng">⚙</button>
+          </div>
+        </div>
       </div>
-      <div id="status"></div>
-      <div id="actionBar">
-        <button id="drawBtn" class="btn">Rút bài</button>
-        <button id="acceptBtn" class="btn danger hidden">Chịu phạt</button>
-        <button id="toiBenBtn" class="btn gold hidden">TỚI BẾN!</button>
-        <button id="helpBtn" class="btn icon help" title="Tra cứu lá bài">?</button>
-        <button id="emoteBtn" class="btn icon" title="Biểu cảm">😀</button>
-        <button id="logBtn" class="btn icon" title="Nhật ký">📜</button>
-      </div>
-      <div id="meChip" class="hidden"></div>
-      <div id="hand"></div>
-      <aside id="logPanel" class="hidden"><h3>Nhật ký</h3><ol id="logList"></ol></aside>
       <div id="emotePanel" class="hidden"></div>
+      <div id="pauseOverlay" class="hidden">
+        <div class="pause-card">
+          <div class="pause-title">TẠM DỪNG</div>
+          <p id="pauseText" class="muted">Chủ phòng đã tạm dừng ván.</p>
+          <div id="pauseHost" class="row hidden"><button id="resumeBtn" class="btn primary">Tiếp tục</button><button id="closeRoomBtn2" class="btn danger">Giải tán phòng</button></div>
+        </div>
+      </div>
     </section>
 
     <div id="fxLayer"></div>
@@ -115,6 +143,7 @@
         <h2>Tra cứu lá bài</h2>
         <div class="help-rules" id="helpRules"></div>
         <div class="help-grid" id="helpGrid"></div>
+        <p class="help-credit">Hiệu ứng: Super Pixel Effects Gigapack - Will Tice / unTied Games</p>
       </div>
     </div>
     <div id="tip" class="hidden"></div>

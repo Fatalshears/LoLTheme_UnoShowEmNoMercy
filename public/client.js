@@ -41,7 +41,7 @@
   });
   socket.on('toast', t => toast(t.text, t.type));
   socket.on('state', s => {
-    timer = s.timer ? { seat: s.timer.seat, end: performance.now() + s.timer.leftMs, total: s.timer.totalMs } : null;
+    timer = s.timer ? { seat: s.timer.seat, end: performance.now() + s.timer.leftMs, total: s.timer.totalMs, frozen: s.timer.paused ? s.timer.leftMs : null } : null;
     queue.push(s);
     pump();
   });
@@ -81,6 +81,31 @@
     socket.emit('hello', { token, name });
   }
   $('addBotBtn').onclick = () => socket.emit('addBot');
+  $('menuRulesBtn').onclick = () => openHelp();
+  const confirmClose = () => pick('Giải tán phòng?', 'Ván đang chơi sẽ bị huỷ, mọi người quay về màn hình chính và điểm bị xoá.',
+    [{ label: 'Giải tán phòng', value: 1 }], () => socket.emit('closeRoom'));
+  $('closeRoomBtn').onclick = confirmClose;
+  $('closeRoomBtn2').onclick = confirmClose;
+  $('resumeBtn').onclick = () => socket.emit('pause', { paused: false });
+  $('hostBtn').onclick = () => {
+    openModal('Chủ phòng', '', true);
+    const box = document.createElement('div');
+    box.className = 'host-menu';
+    const b1 = document.createElement('button');
+    b1.className = 'btn primary'; b1.textContent = S.paused ? 'Tiếp tục ván' : 'Tạm dừng ván';
+    b1.onclick = () => { closeModal(); socket.emit('pause', { paused: !S.paused }); };
+    const b2 = document.createElement('button');
+    b2.className = 'btn danger'; b2.textContent = 'Giải tán phòng';
+    b2.onclick = () => { closeModal(); confirmClose(); };
+    box.append(b1, b2);
+    $('modalBody').appendChild(box);
+    delete $('modal').dataset.open; $('modal').dataset.open = 'host';
+  };
+  socket.on('roomClosed', () => {
+    queue.length = 0; busy = false;
+    $('roundEnd').classList.add('hidden'); closeModal();
+    toast('Chủ phòng đã giải tán phòng.');
+  });
   $('startBtn').onclick = () => socket.emit('start');
   $('nextRoundBtn').onclick = () => socket.emit('start');
   $('lobbyBtn').onclick = () => socket.emit('backToLobby');
@@ -98,9 +123,9 @@
     $('lobby').classList.toggle('overlay', !inLobby);
     $('table').classList.toggle('hidden', inLobby || !S.view);
     $('joinBox').classList.toggle('hidden', joined || !inLobby);
-    $('lobbyInfo').classList.toggle('hidden', !inLobby);
+    $('lobbyInfo').classList.toggle('hidden', !inLobby || !joined);
     $('spectatorNote').classList.toggle('hidden', inLobby || joined);
-    $('lobbyCount').textContent = `(${S.players.length}/8)`;
+    $('lobbyCount').textContent = `${S.players.length}/8 người`;
     const isHost = S.me && S.me.host;
     $('hostControls').classList.toggle('hidden', !isHost);
     $('waitHost').classList.toggle('hidden', !joined || isHost);
@@ -109,9 +134,8 @@
     for (const p of S.players) {
       const li = document.createElement('li');
       li.innerHTML = `<span class="avatar" style="background:${avatarColor(p.name)}">${initial(p.name)}</span>
-        <span class="pname">${esc(p.name)}</span>
-        ${p.host ? '<span class="tag gold">Chủ phòng</span>' : ''}${p.bot ? '<span class="tag">Bot</span>' : ''}
-        ${!p.connected ? '<span class="tag warn">Mất kết nối</span>' : ''}
+        <span class="pname">${esc(p.name)}${S.me && S.me.id === p.id ? ' (bạn)' : ''}</span>
+        <span class="tags">${p.host ? '<span class="tag gold">Chủ phòng</span>' : ''}${p.bot ? '<span class="tag">Bot</span>' : ''}${!p.connected ? '<span class="tag warn">Mất kết nối</span>' : ''}</span>
         <span class="score">${p.score} điểm</span>`;
       if (isHost && !p.host) {
         const b = document.createElement('button');
@@ -119,6 +143,12 @@
         b.onclick = () => socket.emit('kick', { id: p.id });
         li.appendChild(b);
       }
+      $('lobbyPlayers').appendChild(li);
+    }
+    for (let i = S.players.length; i < Math.max(4, S.players.length + 1) && i < 8; i++) {
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.innerHTML = '<span class="avatar">+</span><span class="pname">Ghế trống</span>';
       $('lobbyPlayers').appendChild(li);
     }
   }
@@ -133,16 +163,17 @@
   // Seat i positions on an ellipse; my seat at the bottom, the rest clockwise.
   function seatCenter(seat) {
     const n = S.view.seats.length;
-    const order = seatOrder();
-    const k = order.indexOf(seat);
-    const W = innerWidth, H = innerHeight;
-    if (k === 0) return { x: W / 2, y: H - 70 };
+    const k = seatOrder().indexOf(seat);
+    const r = $('board').getBoundingClientRect();
+    const W = r.width, H = r.height;
     const ang = (90 + (k * 360) / n) * Math.PI / 180;
-    const rx = W * 0.42, ry = H * 0.33;
-    const x = W / 2 + rx * Math.cos(ang), y = H * 0.42 + ry * Math.sin(ang);
+    const rx = W * 0.41, ry = H * 0.39;
+    const x = W / 2 + rx * Math.cos(ang), y = r.top + H / 2 + ry * Math.sin(ang);
     const half = W < 700 ? 66 : 100; // keep seat chips on screen
-    return { x: Math.min(W - half, Math.max(half, x)), y: Math.max(60, y) };
+    return { x: Math.min(W - half, Math.max(half, x)), y: Math.min(r.bottom - 22, Math.max(r.top + 30, y)) };
   }
+  // Where cards land when they go to me: the middle of my hand tray.
+  function handPos() { return centerOf($('hand')); }
   function centerOf(el) { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
 
   function renderSeats() {
@@ -150,11 +181,11 @@
     const box = $('seats');
     box.innerHTML = '';
     for (const s of v.seats) {
-      if (s.seat === mySeat()) continue;
+      const isMe = s.seat === mySeat();
       const p = S.players.find(x => x.seat === s.seat) || {};
       const pos = seatCenter(s.seat);
       const el = document.createElement('div');
-      el.className = 'seat';
+      el.className = 'seat' + (isMe ? ' me' : '');
       if (v.actor === s.seat && v.phase !== 'over') el.classList.add('active');
       if (s.out) el.classList.add('out');
       if (!s.out && s.count >= DANGER) el.classList.add('danger');
@@ -164,15 +195,15 @@
       let backs = '';
       for (let i = 0; i < fan; i++) backs += `<img src="${BACK}" style="transform:rotate(${(i - fan / 2) * 7}deg) translateY(${Math.abs(i - fan / 2) * 1.5}px)">`;
       el.innerHTML = `
-        <div class="mini-fan">${s.out ? '' : backs}</div>
+        ${isMe ? '' : `<div class="mini-fan">${s.out ? '' : backs}</div>`}
         <div class="seat-info">
           <span class="avatar" style="background:${avatarColor(s.name)}">${s.out ? '💀' : initial(s.name)}</span>
-          <span class="pname">${esc(s.name)}</span>
+          <span class="pname">${esc(s.name)}${isMe ? ' (bạn)' : ''}</span>
           <span class="count">${s.out ? 'TỚI SỐ' : s.count + ' lá'}</span>
           ${p.bot ? '<span class="tag">Bot</span>' : ''}${p.connected === false ? '<span class="tag warn">Mất mạng</span>' : ''}${p.auto && !p.bot ? '<span class="tag">Tự đánh</span>' : ''}
           ${timerBadge(s.seat)}
         </div>`;
-      if (S.me && S.me.host && !p.bot && !s.out) {
+      if (S.me && S.me.host && !p.bot && !s.out && !isMe) {
         el.title = 'Chủ phòng: bấm đúp để bật/tắt tự đánh cho ghế này';
         el.ondblclick = () => socket.emit('toggleAuto', { id: p.id });
       }
@@ -238,12 +269,12 @@
       ? 'Vòng Quay Tử Thần! Chọn một màu.' : `${name(v.roulette.victim)} đang chọn màu cho Vòng Quay…`;
     if (v.current === me) {
       if (v.phase === 'mustPlayDrawn') return 'Bạn rút được lá đánh được, phải đánh ngay!';
-      return `Tới lượt bạn: đánh một lá hợp lệ hoặc rút bài (tự rút tối đa ${v.maxDraw} lá).`;
+      return 'Tới lượt bạn: đánh một lá hoặc rút bài.';
     }
     return `Lượt của ${name(v.current)}.`;
   }
 
-  const handCardWidth = () => Math.max(84, Math.min(144, innerWidth / 9.17));
+  const handCardWidth = () => Math.max(84, Math.min(144, innerWidth * 0.109));
   const DANGER = E.KNOCKOUT - 5;
   let fanIn = false;   // next hand render spreads the cards out from a stack
   function renderHand() {
@@ -252,7 +283,7 @@
     box.innerHTML = '';
     const n = hand.length;
     const playable = new Set(v.playable);
-    const maxW = Math.min(innerWidth - 40, 1200);
+    const maxW = Math.max(120, box.clientWidth - 16);
     const cardW = handCardWidth();
     const step = n > 1 ? Math.min(cardW * 0.8, (maxW - cardW) / (n - 1)) : 0;
     const totalW = cardW + step * (n - 1);
@@ -281,13 +312,6 @@
     box.classList.remove('passing');
     const me = v.seats[mySeat()];
     box.classList.toggle('danger', !!me && !me.out && n >= DANGER);
-    const chip = $('meChip');
-    chip.classList.toggle('hidden', !me);
-    if (me) {
-      chip.className = 'seat-static' + (v.actor === me.seat && v.phase !== 'over' ? ' active' : '') + (!me.out && n >= DANGER ? ' danger' : '');
-      chip.innerHTML = `<div class="seat-info"><span class="avatar" style="background:${avatarColor(me.name)}">${me.out ? '💀' : initial(me.name)}</span>
-        <span class="pname">${esc(me.name)} (bạn)</span><span class="count">${me.out ? 'TỚI SỐ' : n + ' lá'}</span>${timerBadge(me.seat)}</div>`;
-    }
   }
   const ORDER = { red: 0, yellow: 1, green: 2, blue: 3, wild: 4 };
   function sortCards(a, b) {
@@ -306,12 +330,6 @@
     $('drawPile').classList.toggle('clickable', myTurn && v.phase === 'play');
     $('status').textContent = statusText();
     $('status').classList.toggle('mine', myTurn);
-  }
-
-  function renderLog() {
-    const log = S.view.log;
-    $('logList').innerHTML = log.map(l => `<li>${esc(l)}</li>`).join('');
-    $('logList').scrollTop = 1e9;
   }
 
   let endShownRound = null, endTimer = null;
@@ -343,11 +361,19 @@
     if (!S.view || S.status === 'lobby') { $('roundEnd').classList.add('hidden'); return; }
     // the server may have played for us (timer ran out): drop a stale colour/target prompt
     if ($('modal').dataset.open === 'turn' && S.view.actor !== mySeat()) cancelModal();
-    renderSeats(); renderCenter(); renderHand(); renderActions(); renderLog(); renderRoundEnd(); tickTimer();
+    renderSeats(); renderCenter(); renderHand(); renderActions(); renderRoundEnd(); renderPause(); tickTimer();
     if (S.view.phase === 'roulette' && S.view.roulette.victim === mySeat() && !$('modal').dataset.open) {
       chooseColor('Vòng Quay Tử Thần', 'Chọn một màu. Hệ thống sẽ lật bài đến khi ra đúng màu đó và bạn nhận hết.', false)
         .then(color => color && act({ type: 'rouletteColor', color }));
     }
+  }
+  function renderPause() {
+    const paused = !!S.paused && S.status === 'playing';
+    $('pauseOverlay').classList.toggle('hidden', !paused);
+    const isHost = !!(S.me && S.me.host);
+    $('pauseHost').classList.toggle('hidden', !isHost);
+    $('pauseText').textContent = isHost ? 'Đồng hồ lượt đang dừng. Bấm Tiếp tục để chơi tiếp.' : 'Chủ phòng đã tạm dừng ván. Đồng hồ lượt cũng dừng.';
+    $('hostBtn').classList.toggle('hidden', !isHost);
   }
   addEventListener('resize', () => S && S.view && S.status !== 'lobby' && render());
 
@@ -361,7 +387,6 @@
   $('drawPile').onclick = () => { if ($('drawPile').classList.contains('clickable')) act({ type: 'draw' }); };
   $('acceptBtn').onclick = () => act({ type: 'acceptStack' });
   $('toiBenBtn').onclick = () => act({ type: 'callToiBen' });
-  $('logBtn').onclick = () => $('logPanel').classList.toggle('hidden');
   $('emoteBtn').onclick = () => $('emotePanel').classList.toggle('hidden');
   $('helpBtn').onclick = openHelp;
   $('lobbyHelpBtn').onclick = openHelp;
@@ -463,7 +488,7 @@
     const nameOf = i => (v && v.seats[i] ? v.seats[i].name : '');
     const pileC = () => centerOf($('discardPile'));
     const deck = () => centerOf($('drawPile').querySelector('.d1'));
-    const seatPos = st => (st === mySeat() ? { x: innerWidth / 2, y: innerHeight - 90 } : seatCenter(st));
+    const seatPos = st => (st === mySeat() ? handPos() : seatCenter(st));
     let t = 0;
     const at = (ms, fn) => { const when = t + ms; setTimeout(fn, when); };
     for (const e of s.events || []) {
@@ -492,7 +517,7 @@
         } break;
         case 'skip': at(0, () => {
           for (const st of e.seats) { const p = seatPos(st); FX.sprite('skip', p.x, p.y, { scale: 1.6, maxFrames: 24, fps: 20 }); }
-          FX.bigText(e.seats.length > 1 ? 'CẤM CẢ BÀN!' : `${nameOf(e.seats[0])} MẤT LƯỢT`, 'small', 1300);
+          FX.bigText(e.seats.length > 1 ? 'CẤM CẢ BÀN!' : 'MẤT LƯỢT', 'small', 1300);
         }); break;
         case 'reverse': at(0, () => {
           const c = pileC();
@@ -515,7 +540,7 @@
           const gap = e.type === 'draw' ? 300 : 120;
           for (let i = 0; i < n; i++) setTimeout(() => FX.fly(BACK, d, p, { width: 84, ms: e.type === 'draw' ? 550 : 450 }), i * gap);
           if (e.type === 'draw') FX.bigText(`Rút ${e.count} lá`, 'small', 1000);
-          if (e.type === 'takeStack') { FX.bigText(`${nameOf(e.seat)} nhận ${e.count} lá`, 'red small', 1300); setTimeout(() => FX.sprite('absorb', p.x, p.y, { scale: 1.4 }), n * gap); }
+          if (e.type === 'takeStack') { FX.bigText(`Ôm ${e.count} lá`, 'red small', 1300); setTimeout(() => FX.sprite('absorb', p.x, p.y, { scale: 1.4 }), n * gap); }
         }); break;
         case 'drawFail': at(0, () => FX.bigText(`Rút ${v ? v.maxDraw : 3} lá không ra: MẤT LƯỢT`, 'small', 1300)); break;
         case 'zero': {
@@ -538,9 +563,9 @@
               $('hand').classList.add('passing');
               for (const el of document.querySelectorAll('.seat')) el.classList.add('passing');
               e.order.forEach((st, i) => {
-                const a = st === mySeat() ? { x: innerWidth / 2, y: innerHeight - cw * 0.67 - 6 } : seatPos(st);
+                const a = seatPos(st);
                 const nx = e.order[(i + 1) % e.order.length];
-                const b = nx === mySeat() ? { x: innerWidth / 2, y: innerHeight - cw * 0.67 - 6 } : seatPos(nx);
+                const b = seatPos(nx);
                 const w = st === mySeat() ? cw : 60, w2 = nx === mySeat() ? cw : 60;
                 const count = Math.min(4, Math.max(1, (v.seats[st] || {}).count || 1));
                 for (let j = 0; j < count; j++) {
@@ -555,7 +580,7 @@
           break;
         }
         case 'seven': {
-          const caption = `${nameOf(e.seat)} ⇄ ${nameOf(e.target)}: đổi ${e.k} lá` + (e.k < e.K ? ` (không đủ ${e.K})` : '');
+          const caption = `Đổi ${e.k} lá` + (e.k < e.K ? ` (không đủ ${e.K})` : '');
           at(0, () => { const c = pileC(); FX.wheel('Số 7: số lá tráo', [1, 2, 3, 4, 5], e.K, c.x, c.y, { caption }); });
           const groups = {};
           // 1) the chosen cards leave each hand and line up neatly
@@ -565,14 +590,13 @@
               const els = [];
               const mine = side === mySeat() && e.mine;
               const cw = handCardWidth();
-              const stage = side === mySeat()
-                ? { x: innerWidth / 2, y: innerWidth < 700 ? (c.y + innerHeight - cw * 1.34) / 2 + 40 : innerHeight - cw * 1.34 - 120 }
-                : (() => { const p = seatPos(side); return { x: p.x + (c.x - p.x) * 0.38, y: p.y + (c.y - p.y) * 0.38 }; })();
+              const sp = seatCenter(side);
+              const stage = { x: sp.x + (c.x - sp.x) * 0.4, y: sp.y + (c.y - sp.y) * 0.4 };
               if (mine) {
                 const imgs = [...$('hand').children];
                 e.mine.forEach((card, i) => {
                   const img = imgs.find(x => x._card && x._card.id === card.id);
-                  const r = img ? img.getBoundingClientRect() : { left: stage.x, top: innerHeight - 60, width: cw, height: cw * 1.34 };
+                  const r = img ? img.getBoundingClientRect() : { left: stage.x, top: stage.y, width: cw, height: cw * 1.34 };
                   if (img) img.classList.add('picked');
                   const el = FX.place(cardSrc(card), r.left + r.width / 2, r.top + r.height / 2, { width: r.width });
                   const mid = (e.mine.length - 1) / 2;
@@ -596,7 +620,7 @@
           at(Pace.WHEEL_MS + Pace.PICK_MS + 500, () => {
             for (const [from, to] of [[e.seat, e.target], [e.target, e.seat]]) {
               const g = groups[from]; if (!g) continue;
-              const dest = to === mySeat() ? { x: innerWidth / 2, y: innerHeight - 90 } : seatPos(to);
+              const dest = seatPos(to);
               const dx = dest.x - g.stage.x, dy = dest.y - g.stage.y;
               g.els.forEach((el, i) => {
                 FX.move(el, parseFloat(el.style.left) + dx, parseFloat(el.style.top) + dy, { ms: Pace.SWAP_MS - 200, delay: i * 40, scale: 0.8 });
@@ -608,7 +632,7 @@
         }
         case 'rouletteStart': at(0, () => { const c = pileC(); FX.sprite('sparkle2', c.x, c.y, { scale: 4 }); FX.bigText('VÒNG QUAY TỬ THẦN', 'purple', 1500); }); break;
         case 'roulette': {
-          at(0, () => FX.bigText(`${nameOf(e.seat)} chọn ${E.COLOR_NAMES[e.color]}`, 'purple small', 1200));
+          at(0, () => FX.bigText(`Chọn ${E.COLOR_NAMES[e.color]}`, 'purple small', 1200));
           e.flipped.forEach((card, i) => at(600 + i * 380, () => {
             const c = pileC(), p = seatPos(e.seat);
             FX.fly(cardSrc(card), c, p, { width: 120, ms: 600, fromScale: 1.3 });
@@ -619,7 +643,7 @@
         case 'knockout': at(200, () => {
           const p = seatPos(e.seat);
           FX.sprite('koBoom', p.x, p.y, { scale: 3 }); FX.sprite('skull', p.x, p.y - 30, { scale: 3 }); FX.shake(700);
-          FX.bigText(`${nameOf(e.seat)}: TỚI SỐ!`, 'red huge', 2000);
+          FX.bigText('TỚI SỐ!', 'red huge', 2000);
         }); break;
         case 'lastCard': at(0, () => { const p = seatPos(e.seat); FX.sprite('heartbeat', p.x, p.y - 50, { scale: 2 }); }); break;
         case 'toiBen': at(0, () => { const p = seatPos(e.seat); FX.sprite('firework', p.x, p.y, { scale: 3 }); FX.bigText('TỚI BẾN!', 'gold huge'); }); break;
@@ -627,8 +651,8 @@
         case 'win': at(0, () => {
           const p = seatPos(e.seat);
           FX.sprite('firework2', p.x, p.y, { scale: 4 }); FX.sprite('crown', p.x, p.y - 80, { scale: 3, maxFrames: 30 });
-          FX.bigText(e.seat === mySeat() ? 'CHIẾN THẮNG!' : `${nameOf(e.seat)} THẮNG!`, 'gold huge', 2500);
-          if (e.seat !== mySeat() && mySeat() >= 0) setTimeout(() => FX.sprite('gameOver', innerWidth / 2, innerHeight * 0.3, { scale: 1.5, maxFrames: 30 }), 900);
+          FX.bigText(e.seat === mySeat() ? 'CHIẾN THẮNG!' : 'KẾT THÚC!', 'gold huge', 2500);
+          if (e.seat !== mySeat() && mySeat() >= 0) setTimeout(() => { const c = pileC(); FX.sprite('gameOver', c.x, c.y - 120, { scale: 1.5, maxFrames: 30 }); }, 900);
         }); break;
       }
       t += Pace.eventMs(e);
@@ -639,7 +663,7 @@
   // ---------- turn timer ----------
   function timerLeft(seat) {
     if (!timer || !S || !S.view || timer.seat !== seat || S.view.actor !== seat || S.view.phase === 'over') return null;
-    return Math.max(0, timer.end - performance.now());
+    return timer.frozen != null ? timer.frozen : Math.max(0, timer.end - performance.now());
   }
   function timerBadge(seat) {
     return timerLeft(seat) == null ? '' : `<span class="tmr" data-seat="${seat}"><b></b></span>`;

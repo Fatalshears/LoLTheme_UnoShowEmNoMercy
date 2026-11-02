@@ -117,7 +117,6 @@
     ], { duration: tossMs, easing: 'ease-out', fill: 'forwards' });
     setTimeout(() => {
       el.classList.add('done');
-      sprite('coins', x, y - 40, { scale: 2.2, rotate: -90 });
     }, tossMs);
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 260); }, total - 250);
   }

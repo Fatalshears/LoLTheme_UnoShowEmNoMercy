@@ -35,7 +35,6 @@ FX = {
     "heartbeat": "Sci-fi/scifi_heartbeat_fast_001/scifi_heartbeat_fast_001_large_yellow",
     "crown": "Symbols/symbol_crown_001/symbol_crown_001_large_yellow",
     "gameOver": "Symbols/symbol_game_over_text_001/symbol_game_over_text_001_large_red",
-    "coins": "Magic Bursts/directional_coin_burst_001/directional_coin_burst_001_large_yellow",
 }
 
 

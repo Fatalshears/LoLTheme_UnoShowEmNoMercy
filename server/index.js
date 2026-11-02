@@ -49,7 +49,8 @@ const table = {
   round: 0,
   emoteCooldown: {},
   animUntil: 0,             // clients are animating the last events until this time
-  turn: null                // { key, deadline } for the decision currently awaited
+  turn: null,               // { key, deadline } for the decision currently awaited
+  paused: false             // host paused the round: no actions, timers frozen
 };
 
 const sockets = new Map();  // socket.id -> token
@@ -77,7 +78,7 @@ function loadSnapshot() {
     }
     const now = Date.now();
     for (const p of table.players) if (!p.bot) p.lastSeen = now; // grace period restarts after a server restart
-    table.turn = null; table.animUntil = 0;
+    table.turn = null; table.animUntil = 0; table.paused = false;
     console.log(`Đã khôi phục bàn chơi từ snapshot (${table.status}).`);
   } catch (e) { console.error('Không đọc được snapshot:', e.message); }
 }
@@ -113,7 +114,8 @@ function turnInfo() {
   if (table.status !== 'playing' || !table.turn) return null;
   const p = findPlayer(table.seatTokens[table.turn.seat]);
   if (!p || p.bot || p.auto) return null;
-  return { seat: table.turn.seat, leftMs: Math.max(0, table.turn.deadline - Date.now()), totalMs: TURN_MS };
+  const left = table.paused ? table.turn.leftOnPause : table.turn.deadline - Date.now();
+  return { seat: table.turn.seat, leftMs: Math.max(0, left), totalMs: TURN_MS, paused: table.paused };
 }
 
 function broadcast(events = []) {
@@ -124,7 +126,7 @@ function broadcast(events = []) {
     const me = findPlayer(token);
     const seat = token ? seatOf(token) : -1;
     s.emit('state', {
-      status: table.status, round: table.round,
+      status: table.status, round: table.round, paused: table.paused,
       me: me ? { id: token.slice(0, 8), name: me.name, seat, host: token === table.hostToken } : null,
       players: publicPlayers(),
       view: table.game ? E.viewFor(table.game, seat >= 0 ? seat : null) : null,
@@ -144,7 +146,7 @@ function startRound() {
   const order = seated.slice(shift).concat(seated.slice(0, shift));
   table.seatTokens = order.map(p => p.token);
   table.game = E.newRound(order.map(p => ({ name: p.name })));
-  table.status = 'playing';
+  table.status = 'playing'; table.paused = false;
   const events = [{ type: 'roundStart' }];
   table.animUntil = Date.now() + Pace.totalMs(events);
   table.turn = null; updateTurn();
@@ -169,7 +171,7 @@ let autoTimer = null;
 function afterChange() {
   saveSnapshot();
   clearTimeout(autoTimer);
-  if (table.status !== 'playing') return;
+  if (table.status !== 'playing' || table.paused) return;
   const seat = E.actor(table.game);
   if (seat == null) return;
   const p = findPlayer(table.seatTokens[seat]);
@@ -256,6 +258,30 @@ io.on('connection', socket => {
     try { startRound(); } catch (e) { fail(e.message); }
   });
 
+  socket.on('pause', ({ paused } = {}) => {
+    if (!isHost() || table.status !== 'playing' || !!paused === table.paused) return;
+    table.paused = !!paused;
+    if (table.paused) {
+      clearTimeout(autoTimer);
+      if (table.turn) table.turn.leftOnPause = Math.max(0, table.turn.deadline - Date.now());
+    } else if (table.turn) {
+      table.turn.deadline = Date.now() + (table.turn.leftOnPause ?? TURN_MS);
+      table.animUntil = Math.min(table.animUntil, Date.now());
+    }
+    broadcast(); afterChange();
+  });
+
+  // Host closes the room: the round is dropped and everyone goes back to the main menu.
+  socket.on('closeRoom', () => {
+    if (!isHost()) return;
+    clearTimeout(autoTimer);
+    Object.assign(table, { status: 'lobby', players: [], hostToken: null, game: null, seatTokens: [],
+      scores: {}, round: 0, emoteCooldown: {}, animUntil: 0, turn: null, paused: false });
+    for (const sid of sockets.keys()) sockets.set(sid, null);
+    io.emit('roomClosed');
+    broadcast(); saveSnapshot();
+  });
+
   socket.on('backToLobby', () => {
     if (!isHost() || table.status !== 'roundEnd') return;
     table.status = 'lobby'; table.game = null; table.seatTokens = [];
@@ -272,6 +298,7 @@ io.on('connection', socket => {
     if (!p || table.status !== 'playing') return;
     const seat = seatOf(p.token);
     if (seat < 0) return;
+    if (table.paused) return fail('Ván đang tạm dừng');
     p.lastSeen = Date.now();
     try { applyAction(seat, action); }
     catch (e) { fail(e.message); }

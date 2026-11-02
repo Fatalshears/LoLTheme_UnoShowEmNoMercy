@@ -35,7 +35,8 @@ Trong mạng LAN: http://192.168.1.25:3000
 5. Bị cộng dồn: đánh đè lá phạt có giá trị lớn hơn hoặc bằng, hoặc bấm **Chịu phạt**.
 6. Còn 1 lá: bấm **TỚI BẾN!** cho đẹp (không có phạt nếu quên).
 7. Mỗi lượt có 45 giây; hết giờ hệ thống tự đánh thay.
-8. ❓ mở bảng tra cứu hiệu ứng lá bài, 😀 mở bảng emote, 📜 mở nhật ký ván. Rê chuột lên lá bài để xem hiệu ứng.
+8. ❓ mở bảng tra cứu hiệu ứng lá bài, 😀 mở bảng emote. Rê chuột lên lá bài để xem hiệu ứng.
+9. Chủ phòng bấm ⚙ để **tạm dừng / tiếp tục** ván (đồng hồ lượt cũng dừng) hoặc **giải tán phòng** (mọi người về màn hình chính, điểm bị xoá).
 
 **Rớt mạng / F5:** trình duyệt nhớ ghế của bạn; mở lại trang là vào lại đúng ghế. Ai mất kết nối quá 30 giây khi tới lượt thì hệ thống tự đánh thay.
 Đổi sang máy khác: mở trang, bấm **Lấy lại ghế cũ?** và chọn tên mình.
