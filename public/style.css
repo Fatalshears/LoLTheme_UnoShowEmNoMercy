@@ -63,7 +63,7 @@ input {
 .menu { position: relative; min-height: 100%; display: grid; justify-items: center; align-content: center; gap: 18px; padding: 24px 16px; }
 .brand { display: grid; justify-items: center; text-align: center; }
 .title {
-  margin: 0; font: 800 clamp(48px, 9vw, 104px)/1 var(--font-display, var(--font)); letter-spacing: 2px;
+  margin: 0; padding: .28em .1em .06em; font: 800 clamp(48px, 9vw, 104px)/1.15 var(--font-display, var(--font)); letter-spacing: 2px;
   background: linear-gradient(180deg, #fff6d6 0%, #f3cf6e 45%, #b9842c 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 3px 0 #3a2506) drop-shadow(0 0 18px rgba(232,196,106,.35));
 }
