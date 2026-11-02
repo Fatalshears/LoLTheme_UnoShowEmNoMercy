@@ -10,6 +10,9 @@ data/
 # the full effect pack stays local (license forbids redistributing it);
 # tools/prepare_fx.py copies the effects the game uses into assets/fx/
 assets/Super Pixel Effects Gigapack (Free Version)/
+assets/Effect and FX Pixel All Free/
+assets/Free Icon Pack v3.1 (Basic)/
+assets/kenney_*/
 
 # working files
 assets/cards/backup/

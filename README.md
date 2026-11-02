@@ -53,9 +53,10 @@ Chủ phòng **bấm đúp vào ghế** của một người để bật/tắt t
 | `server/index.js` | Server LAN (Express + Socket.io), phòng chờ, vào lại ghế, lưu snapshot |
 | `public/` | Giao diện bàn chơi, hiệu ứng, emote |
 | `assets/cards/` | Hình lá bài, mặt sau, nền bàn |
-| `assets/fx/` | Hiệu ứng đã tách từ Super Pixel Effects Gigapack |
+| `assets/fx/` | Hiệu ứng đã tách từ Super Pixel Effects Gigapack và Effect and FX Pixel |
+| `assets/ui/` | Biểu tượng nút (Free Icon Pack v3.1) |
 | `assets/emotes/` | Emote (WebM, TGS, WebP) |
-| `tools/` | `make_color_backs.py` (tạo mặt sau 4 màu), `prepare_fx.py` (tách hiệu ứng) |
+| `tools/` | `make_color_backs.py` (tạo mặt sau 4 màu), `prepare_fx.py` rồi `prepare_ui_assets.py` (tách hiệu ứng và biểu tượng từ các gói asset gốc) |
 | `tests/` | `npm test`: chạy 1.500 ván bot và các tình huống luật |
 
 Thêm emote: thả file `.webm`, `.tgs` hoặc `.webp` vào `assets/emotes/`, tải lại trang.
@@ -64,4 +65,6 @@ Thêm emote: thả file `.webm`, `.tgs` hoặc `.webp` vào `assets/emotes/`, t�
 
 - Hình lá bài, mặt sau và nền bàn: Duc.
 - Hiệu ứng: **Super Pixel Effects Gigapack - Will Tice / unTied Games** (bản Free). Giấy phép cho phép đóng gói kèm game nhưng không cho phát tán lại riêng bộ asset, nên chỉ những hiệu ứng game dùng được đưa vào `assets/fx/`.
-- Font: Baloo 2 (Google Fonts).
+- Hiệu ứng pixel đổi màu, xúc xắc, chiến thắng: **Effect and FX Pixel** (bản Free).
+- Biểu tượng nút, cúp, vương miện: **Free Icon Pack v3.1 (Basic)**.
+- Font: Bungee và Be Vietnam Pro (Google Fonts).

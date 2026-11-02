@@ -177,6 +177,31 @@ function setup(n, hands, topCard, color) {
   assert.strictEqual(st.current, 2);
 }
 
+// Dice for the first player: the highest roll of the last round goes first, ties re-roll.
+{
+  let rerolls = 0;
+  for (let seed = 1; seed <= 3000; seed++) {
+    const n = 2 + (seed % 7);
+    const st = E.newRound(Array.from({ length: n }, (_, i) => ({ name: 'P' + i })), seed);
+    const R = st.firstRolls;
+    assert.ok(R.length >= 1 && R.length <= 6, 'rounds ' + R.length);
+    assert.ok(R[0].every(v => v >= 1 && v <= 6), 'everyone rolls first');
+    if (R.length > 1) rerolls++;
+    for (let r = 0; r < R.length; r++) {
+      const vals = R[r].filter(v => v != null);
+      const max = Math.max(...vals);
+      const top = R[r].map((v, i) => v === max ? i : -1).filter(i => i >= 0);
+      if (r < R.length - 1) {
+        assert.ok(top.length > 1, 'a re-roll only follows a tie');
+        R[r + 1].forEach((v, i) => assert.strictEqual(v != null, top.includes(i), 'only tied leaders re-roll'));
+      } else {
+        assert.deepStrictEqual(top, [st.current], 'unique winner goes first');
+      }
+    }
+  }
+  assert.ok(rerolls > 0);
+}
+
 // Winning with a +2: next player still draws it
 {
   const st = setup(2, [[{ color: 'red', kind: 'draw2' }], [{ color: 'blue', kind: 'draw2' }]], { color: 'red', kind: 'number', value: 5 });

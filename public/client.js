@@ -135,7 +135,7 @@
       const li = document.createElement('li');
       li.innerHTML = `<span class="avatar" style="background:${avatarColor(p.name)}">${initial(p.name)}</span>
         <span class="pname">${esc(p.name)}${S.me && S.me.id === p.id ? ' (bạn)' : ''}</span>
-        <span class="tags">${p.host ? '<span class="tag gold">Chủ phòng</span>' : ''}${p.bot ? '<span class="tag">Bot</span>' : ''}${!p.connected ? '<span class="tag warn">Mất kết nối</span>' : ''}</span>
+        <span class="tags">${p.host ? '<span class="tag gold"><img src="/assets/ui/crown.png" alt="">Chủ phòng</span>' : ''}${p.bot ? '<span class="tag">Bot</span>' : ''}${!p.connected ? '<span class="tag warn">Mất kết nối</span>' : ''}</span>
         <span class="score">${p.score} điểm</span>`;
       if (isHost && !p.host) {
         const b = document.createElement('button');
@@ -344,7 +344,7 @@
       endTimer = setTimeout(() => $('roundEnd').classList.remove('hidden'), 900);
     }
     const w = v.seats[v.winner];
-    $('endTitle').textContent = v.winner === mySeat() ? '🏆 Bạn thắng!' : `🏆 ${w.name} thắng!`;
+    $('endTitle').innerHTML = '<img class="title-icon" src="/assets/ui/trophy.png" alt="">' + (v.winner === mySeat() ? 'Bạn thắng!' : `${esc(w.name)} thắng!`);
     $('endText').textContent = `Lý do: ${v.endReason}. Nhận ${v.points} điểm (gồm ${v.knockouts.length} lần Tới Số × 250).`;
     const rows = S.players.slice().sort((a, b) => b.score - a.score)
       .map(p => `<tr><td>${esc(p.name)}</td><td>${p.seat >= 0 && v.seats[p.seat].out ? '💀 Tới Số' : (p.seat >= 0 ? v.seats[p.seat].count + ' lá' : '')}</td><td>${p.score} điểm</td></tr>`);
@@ -495,7 +495,7 @@
       switch (e.type) {
         case 'roundStart': {
           at(0, () => { FX.bigText('VÁN MỚI!', 'gold', 1200); $('table').classList.add('picking'); });
-          if (e.first != null && v) at(1200, () => pickFirst(e.first, v.seats.length));
+          if (e.first != null && v) at(1200, () => rollDice(e.rolls || [v.seats.map((_, i) => i === e.first ? 6 : 1)], e.first));
           at(Pace.eventMs(e) - 50, () => $('table').classList.remove('picking'));
           break;
         }
@@ -507,7 +507,7 @@
             setTimeout(() => {
               renderCenter(v);
               FX.sprite('impact', to.x, to.y, { scale: 2.2 });
-              if (E.needsColor(e.card)) FX.sprite('light', to.x, to.y, { scale: 1.6 });
+              if (E.needsColor(e.card)) FX.sprite('swirl_' + e.color, to.x, to.y, { scale: 4 });
             }, 620);
           });
           break;
@@ -637,7 +637,7 @@
         }
         case 'rouletteStart': at(0, () => { const c = pileC(); FX.sprite('sparkle2', c.x, c.y, { scale: 4 }); FX.bigText('VÒNG QUAY TỬ THẦN', 'purple', 1500); }); break;
         case 'roulette': {
-          at(0, () => FX.bigText(`Chọn ${E.COLOR_NAMES[e.color]}`, 'purple small', 1200));
+          at(0, () => { const c = pileC(); FX.sprite('swirl_' + e.color, c.x, c.y, { scale: 3.2 }); FX.bigText(`Chọn ${E.COLOR_NAMES[e.color]}`, 'purple small', 1200); });
           e.flipped.forEach((card, i) => at(600 + i * 380, () => {
             const c = pileC(), p = seatPos(e.seat);
             FX.fly(cardSrc(card), c, p, { width: 120, ms: 600, fromScale: 1.3 });
@@ -655,7 +655,7 @@
         case 'reshuffle': at(0, () => FX.bigText('Trộn lại bài', 'small')); break;
         case 'win': at(0, () => {
           const p = seatPos(e.seat);
-          FX.sprite('firework2', p.x, p.y, { scale: 4 }); FX.sprite('crown', p.x, p.y - 80, { scale: 3, maxFrames: 30 });
+          FX.sprite('rune', p.x, p.y, { scale: 4 }); FX.sprite('firework2', p.x, p.y, { scale: 4 }); FX.sprite('crown', p.x, p.y - 80, { scale: 3, maxFrames: 30 });
           FX.bigText(e.seat === mySeat() ? 'CHIẾN THẮNG!' : 'KẾT THÚC!', 'gold huge', 2500);
           if (e.seat !== mySeat() && mySeat() >= 0) setTimeout(() => { const c = pileC(); FX.sprite('gameOver', c.x, c.y - 120, { scale: 1.5, maxFrames: 30 }); }, 900);
         }); break;
@@ -665,30 +665,88 @@
     return t;
   }
 
-  // Round start: a glow hops around the table (clockwise from me) and stops on who goes first.
-  function pickFirst(first, n) {
-    const order = seatOrder();
-    const target = order.indexOf(first);
-    const steps = n * 2 + target;               // two full laps, then land
-    const spin = Pace.PICK_FIRST_MS - 1000;
-    const delays = []; let acc = 0;
-    for (let i = 0; i < steps; i++) delays.push(1 + i * i);
-    const sum = delays.reduce((a, b) => a + b, 0);
-    const scale = spin / sum;
-    const ring = document.createElement('div');
-    ring.className = 'picker';
-    $('fxLayer').appendChild(ring);
-    const chipPos = seat => { const el = document.querySelector(`.seat[data-seat="${seat}"] .seat-info`); return el ? centerOf(el) : seatCenter(seat); };
-    const put = k => { const p = chipPos(order[k % n]); ring.style.left = p.x + 'px'; ring.style.top = p.y + 'px'; };
-    put(0);
-    for (let i = 1; i <= steps; i++) { acc += delays[i - 1] * scale; setTimeout(() => put(i), acc); }
+  // Round start: every player's die tumbles next to their seat; the highest roll goes first.
+  // Tied leaders roll again. The server decides the rolls (e.rolls), the client only shows them.
+  const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+  const FACE_ROT = { 1: [0, 0], 2: [0, -90], 3: [-90, 0], 4: [90, 0], 5: [0, 90], 6: [0, 180] };
+  function makeDie() {
+    const wrap = document.createElement('div');
+    wrap.className = 'die-wrap';
+    const cube = document.createElement('div');
+    cube.className = 'die';
+    for (let f = 1; f <= 6; f++) {
+      const face = document.createElement('div');
+      face.className = 'face f' + f;
+      for (let k = 0; k < 9; k++) {
+        const pip = document.createElement('i');
+        if (PIPS[f].includes(k)) pip.className = 'on';
+        face.appendChild(pip);
+      }
+      cube.appendChild(face);
+    }
+    wrap.appendChild(cube);
+    $('fxLayer').appendChild(wrap);
+    return wrap;
+  }
+  function rollDie(wrap, value) {
+    const cube = wrap.firstChild;
+    const rnd = () => Math.floor(Math.random() * 4) * 90 + 45;
+    cube.style.transition = 'none';
+    cube.style.transform = `rotateX(${rnd()}deg) rotateY(${rnd()}deg)`;
+    wrap.classList.remove('land', 'tumble');
+    void wrap.offsetWidth;
+    const [ax, ay] = FACE_ROT[value];
+    const spins = () => 360 * (2 + Math.floor(Math.random() * 2)) * (Math.random() < 0.5 ? -1 : 1);
+    cube.style.transition = `transform ${Pace.DICE_ROLL_MS - 100}ms cubic-bezier(.15,.65,.25,1)`;
+    cube.style.transform = `rotateX(${ax + spins()}deg) rotateY(${ay + spins()}deg)`;
+    wrap.style.setProperty('--tilt', (Math.random() * 30 - 15).toFixed(1) + 'deg');
+    wrap.classList.add('tumble');
+    setTimeout(() => wrap.classList.add('land'), Pace.DICE_ROLL_MS - 100);
+  }
+  function rollDice(rounds, first) {
+    // The die sits beside the player's name chip, on the side facing the middle of the table.
+    const c = centerOf($('board'));
+    const diePos = seat => {
+      const el = document.querySelector(`.seat[data-seat="${seat}"] .seat-info`);
+      if (!el) { const p = seatCenter(seat); return { x: p.x + (c.x - p.x) * 0.3, y: p.y + (c.y - p.y) * 0.3 }; }
+      const r = el.getBoundingClientRect(), gap = (innerWidth < 700 ? 26 : 40);
+      const right = r.left + r.width / 2 <= c.x + 40;
+      return { x: right ? r.right + gap : r.left - gap, y: r.top + r.height / 2 };
+    };
+    const dice = {};
+    const step = Pace.DICE_ROLL_MS + Pace.DICE_HOLD_MS;
+    rounds.forEach((row, r) => {
+      setTimeout(() => {
+        row.forEach((val, seat) => {
+          if (val == null) return;
+          let d = dice[seat];
+          if (!d) {
+            d = dice[seat] = makeDie();
+            const p = diePos(seat);
+            d.style.left = p.x + 'px'; d.style.top = p.y + 'px';
+          }
+          rollDie(d, val);
+        });
+      }, r * step);
+      setTimeout(() => {
+        const vals = row.filter(v => v != null), max = Math.max(...vals);
+        row.forEach((val, seat) => { if (val != null && val < max) dice[seat].classList.add('out'); });
+        if (r < rounds.length - 1) {
+          row.forEach((val, seat) => { if (val === max) dice[seat].classList.add('tie'); });
+          FX.bigText('HÒA! TUNG LẠI', 'gold small', Pace.DICE_HOLD_MS - 100);
+        }
+      }, r * step + Pace.DICE_ROLL_MS);
+    });
     setTimeout(() => {
-      ring.classList.add('done');
-      const p = chipPos(first);
-      FX.sprite('sparkle', p.x, p.y, { scale: 2.4 });
-      FX.bigText(first === mySeat() ? 'BẠN ĐI TRƯỚC!' : 'ĐI TRƯỚC!', 'gold small', 1000);
-      setTimeout(() => ring.remove(), 1000);
-    }, spin + 30);
+      const d = dice[first];
+      if (d) {
+        d.classList.remove('tie'); d.classList.add('win');
+        FX.sprite('starburst', parseFloat(d.style.left), parseFloat(d.style.top), { scale: 2.6 });
+      }
+      FX.bigText(first === mySeat() ? 'BẠN ĐI TRƯỚC!' : 'ĐI TRƯỚC!', 'gold small', Pace.DICE_RESULT_MS - 300);
+    }, rounds.length * step);
+    setTimeout(() => Object.values(dice).forEach(d => { d.classList.add('gone'); setTimeout(() => d.remove(), 300); }),
+      rounds.length * step + Pace.DICE_RESULT_MS - 250);
   }
 
   // A knockout is shown after that player's draw animation, never before it.

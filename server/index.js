@@ -25,6 +25,7 @@ app.use(express.static(path.join(ROOT, 'public')));
 app.use('/shared', express.static(path.join(ROOT, 'shared')));
 app.use('/assets/cards', express.static(path.join(ROOT, 'assets', 'cards'), { maxAge: '7d' }));
 app.use('/assets/fx', express.static(path.join(ROOT, 'assets', 'fx'), { maxAge: '7d' }));
+app.use('/assets/ui', express.static(path.join(ROOT, 'assets', 'ui'), { maxAge: '7d' }));
 app.use('/assets/emotes', express.static(path.join(ROOT, 'assets', 'emotes'), { maxAge: '7d' }));
 app.get('/vendor/lottie.min.js', (req, res) =>
   res.sendFile(require.resolve('lottie-web/build/player/lottie.min.js')));
@@ -145,7 +146,7 @@ function startRound() {
   table.seatTokens = order.map(p => p.token);
   table.game = E.newRound(order.map(p => ({ name: p.name })));
   table.status = 'playing'; table.paused = false;
-  const events = [{ type: 'roundStart', first: table.game.current }];
+  const events = [{ type: 'roundStart', first: table.game.current, rolls: table.game.firstRolls }];
   table.animUntil = Date.now() + Pace.totalMs(events);
   table.turn = null; updateTurn();
   broadcast(events);
