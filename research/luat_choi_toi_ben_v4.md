@@ -125,10 +125,9 @@ Mỗi lượt có **45 giây** (tính riêng cho mỗi lần phải ra quyết �
 - Nếu `0` hoặc `7` là **lá cuối cùng** khiến người chơi hết bài, người đó thắng ngay, không kích hoạt hiệu ứng.
 - Lá `0` hoặc `7` bị xả kèm dưới lá `Xả Toàn Bộ` không kích hoạt hiệu ứng.
 
-## 6. Hô "TỚI BẾN!" **[MỚI]**
+## 6. Còn 1 lá **[MỚI]**
 
-- Khi còn đúng 1 lá trên tay, người chơi có thể bấm **"TỚI BẾN!"** để thông báo cho cả bàn (hiệu ứng trình diễn).
-- **Không có luật bắt lỗi quên hô** và không có phạt.
+- Khi người chơi còn đúng 1 lá, khung tên của họ tự hiện hiệu ứng liên tục để cả bàn biết. Không cần bấm hô và không có phạt.
 
 ## 7. Chiến thắng
 
