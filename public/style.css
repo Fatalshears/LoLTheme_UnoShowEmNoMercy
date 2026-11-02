@@ -11,6 +11,8 @@
   --purple: #a66bff;
   --radius: 14px;
   --font: 'Baloo 2', 'Segoe UI', system-ui, sans-serif;
+  --hand-h: clamp(132px, 18vw, 228px);
+  --pile-w: clamp(100px, 10.8vw, 156px);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; }
@@ -72,13 +74,13 @@ input {
 #table { transition: transform .1s; }
 #table.shake { animation: shake .45s; }
 #center {
-  position: absolute; left: 50%; top: 44%; width: 0; height: 0; --active: #888;
+  position: absolute; left: 50%; top: 43%; width: 0; height: 0; --active: #888;
 }
 .card { border-radius: 9px; box-shadow: 0 4px 14px rgba(0,0,0,.55); display: block; }
 
 /* draw pile, top-left corner */
 .deck { position: absolute; left: 18px; top: 18px; display: grid; justify-items: center; gap: 8px; z-index: 5; }
-.deck-stack { position: relative; width: clamp(64px, 6.5vw, 96px); aspect-ratio: 0.745; }
+.deck-stack { position: relative; width: clamp(77px, 7.8vw, 115px); aspect-ratio: 0.745; }
 .deck-stack .card { position: absolute; inset: 0; width: 100%; }
 .deck-stack .d3 { transform: translate(6px, 6px) rotate(4deg); filter: brightness(.6); }
 .deck-stack .d2 { transform: translate(3px, 3px) rotate(2deg); filter: brightness(.8); }
@@ -92,7 +94,7 @@ input {
 #discardPile { position: absolute; left: 0; top: 0; width: 0; height: 0; }
 #pileCards { position: absolute; left: 0; top: 0; }
 .pile-card {
-  position: absolute; width: clamp(84px, 9vw, 130px); left: 0; top: 0; margin: 0;
+  position: absolute; width: var(--pile-w); left: 0; top: 0; margin: 0;
   translate: -50% -50%; transition: opacity 1.2s ease, filter 1.2s ease, box-shadow .4s;
 }
 .pile-card:not(.top) { filter: saturate(.75) brightness(.85); }
@@ -104,13 +106,13 @@ input {
   transition: background .6s; pointer-events: none;
 }
 #colorTag {
-  position: absolute; left: 0; top: calc(clamp(84px, 9vw, 130px) * 0.67 + 38px); translate: -50% 0; white-space: nowrap;
+  position: absolute; left: 0; top: calc(var(--pile-w) * -0.67 - 66px); translate: -50% 0; white-space: nowrap; z-index: 2;
   background: var(--panel); border: 2px solid var(--active); border-radius: 999px; padding: 0 12px; font-size: 14px; font-weight: 700;
 }
 
 /* direction arrows around the pile */
 #dirArrows {
-  position: absolute; left: 0; top: 0; width: min(clamp(320px, 36vw, 520px), 58vh); aspect-ratio: 1; translate: -50% -50%;
+  position: absolute; left: 0; top: 0; width: min(clamp(224px, 25.2vw, 364px), 40.6vh); aspect-ratio: 1; translate: -50% -50%;
   pointer-events: none; filter: drop-shadow(0 0 10px rgba(255,138,26,.55)) drop-shadow(0 4px 6px rgba(0,0,0,.6));
 }
 #dirArrows .flip { width: 100%; height: 100%; transition: transform .7s cubic-bezier(.5,-0.4,.5,1.4); }
@@ -121,7 +123,7 @@ input {
 #dirArrows.flash { animation: pulse .5s 2; }
 
 #stackBadge {
-  position: absolute; left: calc(clamp(84px, 9vw, 130px) * 0.5 + 30px); top: -60px;
+  position: absolute; left: calc(var(--pile-w) * 0.5 + 30px); top: -60px;
   font: 800 44px var(--font); color: #fff; background: radial-gradient(#ff5b4f, #8e0e07);
   border: 3px solid #ffd2cc; border-radius: 50%; width: 92px; height: 92px; display: grid; place-items: center;
   box-shadow: 0 0 30px rgba(255,60,40,.7); animation: pulse .7s infinite; z-index: 20;
@@ -137,19 +139,19 @@ input {
 .seat.danger .count { color: #ff5b4f; animation: shakeX .35s infinite; }
 .seat.danger .seat-info { border-color: #ff5b4f; box-shadow: 0 0 18px rgba(255,60,40,.7); }
 .seat.out { opacity: .55; filter: grayscale(.8); }
-.mini-fan { height: 54px; position: relative; width: 120px; }
-.mini-fan img { position: absolute; left: 42px; top: 0; width: 38px; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,.5); transform-origin: 50% 120%; }
+.mini-fan { height: 64px; position: relative; width: 120px; transition: opacity .2s; }
+.mini-fan img { position: absolute; left: 37px; top: 0; width: 46px; transition: transform .5s ease; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,.5); transform-origin: 50% 120%; }
 
 #status {
-  position: absolute; left: 50%; bottom: calc(clamp(110px, 15vw, 190px) + 64px); transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: calc(var(--hand-h) + 64px); transform: translateX(-50%);
   background: var(--panel); border: 1px solid var(--panel-border); border-radius: 999px; padding: 4px 18px;
   font-size: 16px; max-width: calc(100% - 32px); text-align: center;
 }
 #status.mine { border-color: var(--gold); color: #fff3cf; }
-#actionBar { position: absolute; left: 50%; bottom: calc(clamp(110px, 15vw, 190px) + 14px); transform: translateX(-50%); display: flex; gap: 10px; }
-#hand { position: absolute; left: 0; right: 0; bottom: 0; height: clamp(110px, 15vw, 190px); }
+#actionBar { position: absolute; left: 50%; bottom: calc(var(--hand-h) + 14px); transform: translateX(-50%); display: flex; gap: 10px; }
+#hand { position: absolute; left: 0; right: 0; bottom: 0; height: var(--hand-h); }
 #hand.danger { box-shadow: inset 0 -40px 60px -20px rgba(255,40,30,.6); }
-.hand-card { position: absolute; bottom: calc(clamp(110px, 15vw, 190px) - 1.34 * var(--cw, 110px) - 6px); transition: transform .15s, filter .15s; cursor: default; }
+.hand-card { position: absolute; bottom: calc(var(--hand-h) - 1.34 * var(--cw, 110px) - 6px); transition: transform .15s, filter .15s; cursor: default; }
 .hand-card.playable { cursor: pointer; transform: translateY(-16px); box-shadow: 0 0 0 3px var(--gold), 0 8px 24px rgba(232,196,106,.6); }
 .hand-card.playable:hover { transform: translateY(-34px) scale(1.04); z-index: 100 !important; }
 .hand-card.dim { filter: brightness(.55); }
@@ -203,7 +205,7 @@ input {
 #logPanel h3 { margin: 0 0 4px; font-size: 16px; color: var(--gold); }
 #logList { margin: 0; padding-left: 18px; overflow: auto; font-size: 14px; color: var(--muted); }
 #emotePanel {
-  position: absolute; left: 50%; bottom: calc(clamp(110px, 15vw, 190px) + 60px); transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: calc(var(--hand-h) + 60px); transform: translateX(-50%);
   background: #16181e; border: 1px solid var(--panel-border); border-radius: var(--radius);
   padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, 72px); gap: 6px; width: min(560px, calc(100% - 32px)); z-index: 20;
 }
@@ -278,12 +280,12 @@ input {
 @keyframes emotePop { 0% { transform: translate(-50%, -30%) scale(.3); opacity: 0; } 10% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; } 18% { transform: translate(-50%, -50%) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -70%); } }
 
 @media (max-width: 700px) {
-  #dirArrows { width: min(300px, 80vw); }
+  #dirArrows { width: min(210px, 56vw); }
   .deck { left: 10px; top: 10px; }
-  .deck-stack { width: 50px; }
+  .deck-stack { width: 60px; }
   .deck-label { font-size: 11px; padding: 0 6px; }
   #colorAura { width: 190px; }
-  #colorTag { top: 92px; font-size: 12px; }
+  #colorTag { top: -112px; font-size: 12px; }
   #stackBadge { left: 58px; top: -70px; width: 64px; height: 64px; font-size: 28px; }
   .wheel { min-width: 180px; }
   .wheel-num { font-size: 64px; }
@@ -292,19 +294,44 @@ input {
   .seat-info { font-size: 12px; padding-right: 8px; max-width: 128px; }
   .seat .pname { overflow: hidden; text-overflow: ellipsis; max-width: 52px; }
   .avatar { width: 26px; height: 26px; }
-  #status { font-size: 13px; bottom: calc(clamp(110px, 15vw, 190px) + 108px); border-radius: 14px; }
-  #actionBar { bottom: calc(clamp(110px, 15vw, 190px) + 56px); }
-  #meChip { left: 50%; transform: translateX(-50%); bottom: calc(clamp(110px, 15vw, 190px) + 8px); }
+  #status { font-size: 13px; bottom: calc(var(--hand-h) + 108px); border-radius: 14px; }
+  #actionBar { bottom: calc(var(--hand-h) + 56px); }
+  #meChip { left: 50%; transform: translateX(-50%); bottom: calc(var(--hand-h) + 8px); }
   .seat-info .tag { display: none; }
-  .pile-card { width: 76px; }
+  :root { --pile-w: 91px; }
 }
 
-#meChip { position: absolute; left: 16px; bottom: calc(clamp(110px, 15vw, 190px) + 14px); }
+#meChip { position: absolute; left: 16px; bottom: calc(var(--hand-h) + 14px); }
 #meChip .seat-info { font-size: 15px; }
 #meChip.active .seat-info { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold), 0 0 22px rgba(232,196,106,.8); }
 #meChip.danger .count { color: #ff5b4f; }
 @media (max-width: 700px) {
-  #meChip { left: 50%; transform: translateX(-50%); bottom: calc(clamp(110px, 15vw, 190px) + 8px); }
+  #meChip { left: 50%; transform: translateX(-50%); bottom: calc(var(--hand-h) + 8px); }
   #meChip .seat-info { font-size: 13px; }
-  #dirArrows { width: min(280px, 74vw); }
+  #dirArrows { width: min(196px, 52vw); }
 }
+
+/* zero: hands gather into a neat stack, then pass */
+.hand-card.gather { transition: left .6s cubic-bezier(.5,0,.3,1), transform .6s, filter .3s; filter: none; }
+#hand.passing { opacity: 0; transition: opacity .15s; }
+.seat.gathered .mini-fan img { transform: none !important; }
+.seat.passing .mini-fan { opacity: 0; }
+.hand-card.fan-in { transition: left .55s cubic-bezier(.2,.8,.2,1); }
+.hand-card.picked { visibility: hidden; }
+
+/* coin flip for the 0 */
+.coin-wrap { position: absolute; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 8px; z-index: 4; perspective: 700px; }
+.coin { position: relative; width: 132px; height: 132px; transform-style: preserve-3d; }
+.coin .face {
+  position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center; align-content: center; backface-visibility: hidden;
+  background: radial-gradient(circle at 35% 30%, #fff3bf, #f1c24a 38%, #b8811f 70%, #7a4f0c);
+  border: 6px solid #8a5a10; box-shadow: inset 0 0 0 4px #ffd96a, inset 0 0 18px rgba(0,0,0,.45), 0 10px 24px rgba(0,0,0,.6);
+  color: #4a2c04; text-shadow: 0 1px 0 #ffe9a6;
+}
+.coin .face b { font: 800 64px/0.9 var(--font); }
+.coin .face span { font: 800 13px var(--font); letter-spacing: 1px; }
+.coin .f1 { transform: rotateY(180deg); }
+.coin-cap { background: var(--panel); border: 2px solid var(--gold); border-radius: 999px; padding: 2px 16px; font-weight: 700; color: #fff3cf; white-space: nowrap; opacity: 0; transition: opacity .3s; }
+.coin-wrap.done .coin-cap { opacity: 1; }
+.coin-wrap.out { opacity: 0; transition: opacity .25s; }
+.fx-card { position: absolute; border-radius: 7px; box-shadow: 0 6px 18px rgba(0,0,0,.6); translate: -50% -50%; will-change: left, top, transform; }

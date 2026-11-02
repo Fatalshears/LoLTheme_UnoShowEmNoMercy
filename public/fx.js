@@ -95,6 +95,57 @@
     });
   }
 
+  // Coin toss for the 0: lands on face `result` (0 or 1), then shows `caption`.
+  function coin(result, x, y, opts = {}) {
+    const P = window.ToiBenPace || {};
+    const total = P.COIN_MS || 2900, tossMs = 1700;
+    const el = document.createElement('div');
+    el.className = 'coin-wrap';
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+    el.innerHTML = `<div class="coin"><div class="face f0"><b>0</b><span>GIỮ BÀI</span></div>
+      <div class="face f1"><b>1</b><span>CHUYỀN BÀI</span></div></div><div class="coin-cap"></div>`;
+    el.querySelector('.coin-cap').textContent = opts.caption || '';
+    layer().appendChild(el);
+    const c = el.querySelector('.coin');
+    const end = 360 * 6 + (result ? 180 : 0);
+    c.animate([
+      { transform: 'translateY(0) rotateY(0deg) scale(.6)' },
+      { transform: `translateY(-150px) rotateY(${end * 0.55}deg) scale(1.05)`, offset: 0.45, easing: 'ease-in' },
+      { transform: `translateY(0) rotateY(${end - 25}deg) scale(1)`, offset: 0.85 },
+      { transform: `translateY(-14px) rotateY(${end - 6}deg) scale(1)`, offset: 0.93 },
+      { transform: `translateY(0) rotateY(${end}deg) scale(1)` }
+    ], { duration: tossMs, easing: 'ease-out', fill: 'forwards' });
+    setTimeout(() => {
+      el.classList.add('done');
+      sprite('coins', x, y - 40, { scale: 2.2, rotate: -90 });
+    }, tossMs);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 260); }, total - 250);
+  }
+
+  // Persistent card sprites that the caller moves around and removes.
+  function place(src, x, y, opts = {}) {
+    const el = document.createElement('img');
+    el.src = src; el.className = 'fx-card';
+    Object.assign(el.style, { width: (opts.width || 90) + 'px', left: x + 'px', top: y + 'px',
+      transform: `rotate(${opts.rot || 0}deg) scale(${opts.scale || 1})` });
+    layer().appendChild(el);
+    return el;
+  }
+  function move(el, x, y, opts = {}) {
+    const ms = opts.ms || 600;
+    const go = () => {
+      el.style.transition = `left ${ms}ms cubic-bezier(.4,0,.2,1), top ${ms}ms cubic-bezier(.4,0,.2,1), transform ${ms}ms ease, width ${ms}ms ease`;
+      el.style.left = x + 'px'; el.style.top = y + 'px';
+      if (opts.width) el.style.width = opts.width + 'px';
+      el.style.transform = `rotate(${opts.rot || 0}deg) scale(${opts.scale || 1})`;
+    };
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(go, opts.delay || 0)));
+  }
+  function drop(el, ms = 250) {
+    el.style.transition = `opacity ${ms}ms`; el.style.opacity = '0';
+    setTimeout(() => el.remove(), ms + 30);
+  }
+
   function shake(ms = 400) {
     const t = document.getElementById('table');
     t.classList.remove('shake'); void t.offsetWidth; t.classList.add('shake');
@@ -143,5 +194,5 @@
     setTimeout(() => el.remove(), 3200);
   }
 
-  window.FX = { ready, sprite, fly, bigText, wheel, shake, emoteNode, showEmote };
+  window.FX = { ready, sprite, fly, bigText, wheel, coin, place, move, drop, shake, emoteNode, showEmote };
 })();

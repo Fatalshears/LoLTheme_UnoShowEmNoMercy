@@ -128,7 +128,7 @@ function broadcast(events = []) {
       me: me ? { id: token.slice(0, 8), name: me.name, seat, host: token === table.hostToken } : null,
       players: publicPlayers(),
       view: table.game ? E.viewFor(table.game, seat >= 0 ? seat : null) : null,
-      timer, events
+      timer, events: E.eventsFor(events, seat >= 0 ? seat : null)
     });
   }
 }
@@ -275,6 +275,17 @@ io.on('connection', socket => {
     p.lastSeen = Date.now();
     try { applyAction(seat, action); }
     catch (e) { fail(e.message); }
+  });
+
+  // Test hook, only with TOIBEN_DEBUG=1: move matching cards from the draw pile into your hand.
+  if (process.env.TOIBEN_DEBUG === '1') socket.on('debugGive', ({ cards = [] } = {}) => {
+    const p = me(); const seat = p ? seatOf(p.token) : -1;
+    if (seat < 0 || !table.game) return;
+    for (const want of cards) {
+      const i = table.game.drawPile.findIndex(c => c.color === want.color && c.kind === want.kind && (want.value == null || c.value === want.value));
+      if (i >= 0) table.game.seats[seat].hand.push(table.game.drawPile.splice(i, 1)[0]);
+    }
+    broadcast();
   });
 
   socket.on('emote', ({ name } = {}) => {

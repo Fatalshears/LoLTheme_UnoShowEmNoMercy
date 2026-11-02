@@ -19,7 +19,7 @@ const total = st => st.drawPile.length + st.discard.length + st.tray.length +
   assert.strictEqual(count(c => c.kind === 'wildDraw10'), 6);
 }
 
-// Bot-vs-bot rounds: always end, conserve cards, nobody alive ever holds 27+.
+// Bot-vs-bot rounds: always end, conserve cards, nobody alive ever holds 26+.
 let rounds = 0, kos = 0, maxActions = 0;
 const reasons = {};
 for (let seed = 1; seed <= 1500; seed++) {
@@ -30,7 +30,7 @@ for (let seed = 1; seed <= 1500; seed++) {
     const seat = E.actor(st);
     E.act(st, seat, B.decide(st, seat));
     assert.strictEqual(total(st), 252, `card count seed ${seed}`);
-    for (const s of st.seats) if (!s.out) assert.ok(s.hand.length < E.KNOCKOUT, `alive with 27+ seed ${seed}`);
+    for (const s of st.seats) if (!s.out) assert.ok(s.hand.length < E.KNOCKOUT, `alive with 26+ seed ${seed}`);
     assert.ok(++steps < 20000, `round ${seed} did not end`);
   }
   rounds++;
@@ -80,7 +80,7 @@ function setup(n, hands, topCard, color) {
   assert.strictEqual(st.stack.target, 0);
 }
 
-// Knockout at 27 while taking a stack
+// Knockout at 26 while taking a stack
 {
   const filler = Array.from({ length: 24 }, () => ({ color: 'green', kind: 'number', value: 3 }));
   const st = setup(3, [[{ color: 'wild', kind: 'wildDraw10' }, { color: 'red', kind: 'number', value: 1 }], filler, [{ color: 'red', kind: 'number', value: 2 }]],
@@ -92,17 +92,27 @@ function setup(n, hands, topCard, color) {
   assert.strictEqual(st.current, 2);
 }
 
-// Draw: max 3, then lose turn
+// One draw action draws up to 3 cards, then the turn is lost
 {
   const st = setup(2, [[{ color: 'blue', kind: 'number', value: 1 }], [{ color: 'blue', kind: 'number', value: 2 }]],
     { color: 'red', kind: 'number', value: 5 });
-  st.drawPile.push(...Array.from({ length: 3 }, (_, i) => ({ id: 5000 + i, color: 'green', kind: 'number', value: 3 })));
-  for (let i = 0; i < 2; i++) E.act(st, 0, { type: 'draw' });
-  assert.strictEqual(st.current, 0);
+  st.drawPile.push(...Array.from({ length: 4 }, (_, i) => ({ id: 5000 + i, color: 'green', kind: 'number', value: 3 })));
   E.act(st, 0, { type: 'draw' });
   assert.strictEqual(E.MAX_DRAW, 3);
+  assert.strictEqual(st.events.find(e => e.type === 'draw').count, 3);
   assert.strictEqual(st.current, 1);
   assert.strictEqual(st.seats[0].hand.length, 4);
+}
+
+// Auto-draw stops at the first playable card
+{
+  const st = setup(2, [[{ color: 'blue', kind: 'number', value: 1 }], [{ color: 'blue', kind: 'number', value: 2 }]],
+    { color: 'red', kind: 'number', value: 5 });
+  st.drawPile.push({ id: 5100, color: 'green', kind: 'number', value: 3 }, { id: 5101, color: 'red', kind: 'number', value: 8 }, { id: 5102, color: 'green', kind: 'number', value: 4 });
+  E.act(st, 0, { type: 'draw' });
+  assert.strictEqual(st.events.find(e => e.type === 'draw').count, 2);
+  assert.strictEqual(st.phase, 'mustPlayDrawn');
+  assert.strictEqual(st.drawnCardId, 5101);
 }
 
 // Draw a playable card -> must play it
@@ -132,6 +142,10 @@ function setup(n, hands, topCard, color) {
   E.act(st, 0, { type: 'play', cardId: st.seats[0].hand[0].id, target: 1 });
   const ev = st.events.find(e => e.type === 'seven');
   assert.strictEqual(ev.k, Math.min(ev.K, 2));
+  const [mine0] = E.eventsFor(st.events, 0).filter(e => e.type === 'seven');
+  const [mine2] = E.eventsFor(st.events, 2).filter(e => e.type === 'seven');
+  assert.strictEqual(mine0.mine.length, ev.k);
+  assert.ok(!('mine' in mine2) && !('fromSeat' in mine2));
   assert.strictEqual(st.seats[0].hand.length, 6);
   assert.strictEqual(st.seats[1].hand.length, 2);
 }
@@ -143,8 +157,9 @@ function setup(n, hands, topCard, color) {
     { color: 'red', kind: 'number', value: 5 });
   E.act(st, 0, { type: 'play', cardId: st.seats[0].hand[0].id });
   const n = st.events.find(e => e.type === 'zero').n;
+  assert.ok(n === 0 || n === 1);
   const sizes = st.seats.map(s => s.hand.length);
-  const expected = [[1, 2, 3], [3, 1, 2], [2, 3, 1]][n];
+  const expected = [[1, 2, 3], [3, 1, 2]][n];
   assert.deepStrictEqual(sizes, expected);
 }
 

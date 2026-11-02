@@ -4,7 +4,7 @@
   'use strict';
 
   const COLORS = ['red', 'yellow', 'green', 'blue'];
-  const KNOCKOUT = 27;          // Tới Số at this many cards
+  const KNOCKOUT = 26;          // Tới Số at this many cards
   const HAND_SIZE = 7;
   const MAX_DRAW = 3;           // draw at most 3 per turn looking for a playable card
   const SEVEN_MAX = 5;          // the 7 swaps K in 1..5 cards
@@ -274,18 +274,24 @@
     emit(st, { type: 'toiBen', seat });
   }
 
+  // One "draw" action keeps drawing until a playable card shows up or MAX_DRAW cards are drawn.
   function draw(st, seat) {
     if (st.phase !== 'play') throw new Error('Không thể rút lúc này');
     if (st.drawnThisTurn >= MAX_DRAW) throw new Error('Đã rút tối đa');
-    const c = drawOne(st, seat);
-    if (!c) return;
-    st.drawnThisTurn++;
     const s = st.seats[seat];
-    emit(st, { type: 'draw', seat, count: 1 });
-    if (checkKnockout(st, seat, null)) { passTurn(st, seat); return; }
-    if (canMatch(st, c)) {
+    let found = null, got = 0, ko = false;
+    while (st.drawnThisTurn < MAX_DRAW) {
+      const c = drawOne(st, seat);
+      if (!c) break;
+      st.drawnThisTurn++; got++;
+      if (s.hand.length >= KNOCKOUT) { ko = true; break; }
+      if (canMatch(st, c)) { found = c; break; }
+    }
+    if (got) emit(st, { type: 'draw', seat, count: got });
+    if (ko) { checkKnockout(st, seat, null); passTurn(st, seat); return; }
+    if (found) {
       st.phase = 'mustPlayDrawn';
-      st.drawnCardId = c.id;
+      st.drawnCardId = found.id;
       say(st, `${s.name} rút ${st.drawnThisTurn} lá và phải đánh ngay lá vừa rút.`);
     } else if (st.drawnThisTurn >= MAX_DRAW) {
       say(st, `${s.name} rút ${MAX_DRAW} lá không ra bài, mất lượt.`);
@@ -394,7 +400,7 @@
   }
 
   function zeroPass(st, seat) {
-    const n = randInt(st.rng, 0, 2);
+    const n = randInt(st.rng, 0, 1);   // coin flip: 0 = keep hands, 1 = pass once
     const order = [];
     let i = seat;
     do { order.push(i); i = nextSeat(st, i); } while (i !== seat);
@@ -402,7 +408,7 @@
       const hands = order.map(x => st.seats[x].hand);
       order.forEach((x, idx) => { st.seats[order[(idx + 1) % order.length]].hand = hands[idx]; });
     }
-    say(st, n === 0 ? 'Số 0 quay ra 0: không chuyển bài.' : `Số 0 quay ra ${n}: cả bàn chuyển bài ${n} lần.`);
+    say(st, n === 0 ? 'Số 0 tung đồng xu ra 0: không chuyển bài.' : 'Số 0 tung đồng xu ra 1: cả bàn chuyển bài cho người kế tiếp.');
     emit(st, { type: 'zero', seat, n, order });
   }
 
@@ -419,7 +425,8 @@
     me.hand.push(...fromThem);
     them.hand.push(...fromMe);
     say(st, `Số 7 quay ra ${K}: ${me.name} và ${them.name} đổi ${k} lá ngẫu nhiên.`);
-    emit(st, { type: 'seven', seat, target, K, k });
+    // card lists are private: eventsFor() keeps each list only for its owner
+    emit(st, { type: 'seven', seat, target, K, k, fromSeat: fromMe, fromTarget: fromThem });
   }
 
   function acceptStack(st, seat) {
@@ -470,9 +477,20 @@
     };
   }
 
+  // Events as one seat may see them (hidden cards removed).
+  function eventsFor(events, seat) {
+    return events.map(e => {
+      if (e.type !== 'seven') return e;
+      const { fromSeat, fromTarget, ...pub } = e;
+      if (seat === e.seat) pub.mine = fromSeat;
+      else if (seat === e.target) pub.mine = fromTarget;
+      return pub;
+    });
+  }
+
   const api = {
     COLORS, KNOCKOUT, MAX_DRAW, STACK_VALUE, WILD_KINDS, COLOR_NAMES,
-    buildDeck, newRound, act, playableIds, actor, nextSeat, canMatch, viewFor,
+    buildDeck, newRound, act, playableIds, actor, nextSeat, canMatch, viewFor, eventsFor,
     cardName, cardPoints, isWild, isStackCard, needsColor, top, alive
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

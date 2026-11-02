@@ -33,7 +33,7 @@ Các mục đánh dấu **[MỚI]** là thay đổi so với bản 1.
 ### Lá Số và Chức Năng Đơn Sắc
 | Lá | Hiệu ứng |
 | --- | --- |
-| Số `0` | Quay ngẫu nhiên 0–2: mọi người còn sống chuyển toàn bộ bài cho người kế tiếp theo chiều vòng đánh, đúng số lần đã quay. |
+| Số `0` | Tung đồng xu ra 0 hoặc 1. Ra 1: mọi người còn sống chuyển toàn bộ bài cho người kế tiếp theo chiều vòng đánh. Ra 0: không đổi. |
 | Số `7` | Chọn 1 đối thủ; hệ thống quay ngẫu nhiên K (1–5) và tự chọn ngẫu nhiên K lá từ mỗi bên để đổi cho nhau (giảm xuống nếu một bên không đủ bài). Không xét màu. |
 | Số `1`–`6`, `8`, `9` | Không có hiệu ứng. |
 | Cấm Lượt | Người kế tiếp mất lượt. |
@@ -74,10 +74,10 @@ Lá hợp lệ khi thỏa ít nhất một điều kiện:
 - Là lá **Đa Sắc** bất kỳ.
 
 ### 2.2 Rút bài **[MỚI]**
-Nếu không có lá hợp lệ (hoặc chủ động không đánh), người chơi rút **từng lá một**, tối thiểu 1 lá, tối đa **3 lá**:
+Nếu không có lá hợp lệ (hoặc chủ động không đánh), người chơi bấm **Rút bài** một lần; hệ thống **tự rút từng lá** cho đến khi ra lá hợp lệ hoặc đủ **3 lá**:
 - Ngay khi rút được lá hợp lệ, người chơi **phải đánh ngay lá đó** và lượt kết thúc theo hiệu ứng của lá.
 - Nếu đã rút đủ 3 lá mà không ra lá hợp lệ, người chơi **mất lượt**.
-- Nếu trong lúc rút mà bài trên tay chạm 27 lá, người chơi bị **Tới Số** ngay (mục 4).
+- Nếu trong lúc rút mà bài trên tay chạm 26 lá, người chơi bị **Tới Số** ngay (mục 4).
 
 ### 2.3 Đồng hồ lượt **[MỚI]**
 Mỗi lượt có **45 giây** (tính riêng cho mỗi lần phải ra quyết định: đánh/rút, đỡ phạt, chọn màu Vòng Quay). Hết giờ, hệ thống tự đánh thay người đó cho đến hết lượt.
@@ -96,9 +96,9 @@ Mỗi lượt có **45 giây** (tính riêng cho mỗi lần phải ra quyết �
 - Không đỡ (hoặc không có bài đỡ): rút **toàn bộ tổng phạt** và **mất lượt**. Chuỗi về 0, người kế tiếp đánh bình thường theo lá trên cùng.
 - Khi đang bị nhắm, **không được rút bài** để tìm lá đỡ.
 
-## 4. Tới Số (loại khi chạm 27 lá)
+## 4. Tới Số (loại khi chạm 26 lá)
 
-- Bất kỳ lúc nào bài trên tay một người chạm **27 lá trở lên**, người đó bị **TỚI SỐ** và bị loại khỏi ván.
+- Bất kỳ lúc nào bài trên tay một người chạm **26 lá trở lên**, người đó bị **TỚI SỐ** và bị loại khỏi ván.
 - Các tình huống: rút bài ở mục 2.2, ôm Chuỗi Cộng Dồn, dính Vòng Quay Tử Thần, nhận bài qua hiệu ứng số `7`.
 - Bài của người Tới Số được đưa vào **Khay Bài Loại**. Khi Chồng Rút cạn, trộn Khay Bài Loại cùng các lá dưới Chồng Đánh (trừ lá trên cùng) làm Chồng Rút mới.
 - Ghế bị Tới Số bị bỏ qua trong mọi vòng lượt, không tham gia chuyển bài của số `0`, và không thể bị chọn làm mục tiêu số `7`.
@@ -106,12 +106,11 @@ Mỗi lượt có **45 giây** (tính riêng cho mỗi lần phải ra quyết �
 ## 5. Số 0 và số 7 **[MỚI]**
 
 ### 5.1 Số `0` — Chuyển Bài Ngẫu Nhiên
-- Khi đánh lá `0`, hệ thống quay ngẫu nhiên số lần chuyển **N từ 0 đến 2**.
-- **N = 0:** không chuyển, lượt chuyển sang người kế tiếp như bình thường.
-- **N = 1:** tất cả người chơi còn sống đồng loạt chuyển **toàn bộ bài trên tay** cho người còn sống kế tiếp theo chiều vòng đánh hiện tại, 1 lần.
-- **N = 2:** thực hiện việc chuyển như trên 2 lần liên tiếp.
-- Ví dụ: chiều kim đồng hồ, còn Ghế 1, 2, 4, 7 sống. Mỗi lần chuyển: Ghế 1 → Ghế 2 → Ghế 4 → Ghế 7 → Ghế 1.
-- Khi chỉ còn 2 người: N = 0 hoặc N = 2 nghĩa là không ai đổi bài (chuyển 2 lần thì bài quay về chủ cũ); N = 1 nghĩa là hai người đổi bài cho nhau.
+- Khi đánh lá `0`, hệ thống **tung đồng xu**, ra **0 hoặc 1** (50/50).
+- **Ra 0:** không chuyển, lượt chuyển sang người kế tiếp như bình thường.
+- **Ra 1:** tất cả người chơi còn sống đồng loạt chuyển **toàn bộ bài trên tay** cho người còn sống kế tiếp theo chiều vòng đánh hiện tại.
+- Ví dụ: chiều kim đồng hồ, còn Ghế 1, 2, 4, 7 sống: Ghế 1 → Ghế 2 → Ghế 4 → Ghế 7 → Ghế 1.
+- Khi chỉ còn 2 người, ra 1 nghĩa là hai người đổi bài cho nhau.
 - Sau khi chuyển, lượt đi sang người kế tiếp của người đánh lá `0` như bình thường.
 
 ### 5.2 Số `7` — Tráo Bài Ngẫu Nhiên
@@ -134,9 +133,9 @@ Mỗi lượt có **45 giây** (tính riêng cho mỗi lần phải ra quyết �
 
 1. **Hết bài:** người đầu tiên đánh hết bài thắng ván, bằng bất kỳ loại lá nào.
    - Nếu lá cuối cùng là **lá phạt** (`+2`, `+4 Đơn Sắc`, `Đa Sắc Đảo Chiều +4`, `Đa Sắc +6`, `Đa Sắc +10`) hoặc **Vòng Quay Tử Thần** (`wild_colorRoulette.jpg`), hiệu ứng của lá đó vẫn được thực hiện trước khi ván kết thúc: người bị nhắm phải rút đủ số bài phạt (không được đỡ), hoặc chọn màu và nhận các lá lật ra với Vòng Quay.
-   - Nếu pha rút này làm nạn nhân chạm 27 lá, nạn nhân vẫn bị tính Tới Số (có ý nghĩa với điểm thưởng +250).
+   - Nếu pha rút này làm nạn nhân chạm 26 lá, nạn nhân vẫn bị tính Tới Số (có ý nghĩa với điểm thưởng +250).
 2. **Sinh tồn:** nếu mọi đối thủ đều Tới Số, người còn lại thắng ngay.
-3. **Dự phòng khi hết bài rút:** Với 252 lá, trường hợp này không thể xảy ra: mỗi người còn sống giữ tối đa 26 lá (8 × 26 = 208), nên luôn còn ít nhất 43 lá rút được sau khi trộn lại Khay Bài Loại và Chồng Đánh. Luật này chỉ là lưới an toàn trong code: nếu sau khi trộn vẫn không còn lá nào để rút, ván kết thúc; người còn sống có ít bài nhất thắng, nếu bằng nhau thì người có tổng điểm bài trên tay thấp hơn thắng.
+3. **Dự phòng khi hết bài rút:** Với 252 lá, trường hợp này không thể xảy ra: mỗi người còn sống giữ tối đa 25 lá (8 × 25 = 200), nên luôn còn ít nhất 51 lá rút được sau khi trộn lại Khay Bài Loại và Chồng Đánh. Luật này chỉ là lưới an toàn trong code: nếu sau khi trộn vẫn không còn lá nào để rút, ván kết thúc; người còn sống có ít bài nhất thắng, nếu bằng nhau thì người có tổng điểm bài trên tay thấp hơn thắng.
 
 ### Tính điểm (tùy chọn, nhiều ván)
 - Lá Số còn trên tay đối thủ chưa bị loại: theo mệnh giá (0–9).

@@ -5,6 +5,7 @@
   const Pace = window.ToiBenPace;
   const $ = id => document.getElementById(id);
   const socket = io();
+  window.__sock = socket;
   const store = {
     get: k => { try { return localStorage.getItem(k); } catch { return null; } },
     set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } }
@@ -137,8 +138,8 @@
     const W = innerWidth, H = innerHeight;
     if (k === 0) return { x: W / 2, y: H - 70 };
     const ang = (90 + (k * 360) / n) * Math.PI / 180;
-    const rx = W * 0.42, ry = H * 0.36;
-    const x = W / 2 + rx * Math.cos(ang), y = H * 0.44 + ry * Math.sin(ang);
+    const rx = W * 0.42, ry = H * 0.33;
+    const x = W / 2 + rx * Math.cos(ang), y = H * 0.42 + ry * Math.sin(ang);
     const half = W < 700 ? 66 : 100; // keep seat chips on screen
     return { x: Math.min(W - half, Math.max(half, x)), y: Math.max(60, y) };
   }
@@ -156,7 +157,7 @@
       el.className = 'seat';
       if (v.actor === s.seat && v.phase !== 'over') el.classList.add('active');
       if (s.out) el.classList.add('out');
-      if (!s.out && s.count >= 22) el.classList.add('danger');
+      if (!s.out && s.count >= DANGER) el.classList.add('danger');
       el.style.left = pos.x + 'px'; el.style.top = pos.y + 'px';
       el.dataset.seat = s.seat;
       const fan = Math.min(s.count, 8);
@@ -187,7 +188,7 @@
     return { dx: (r() - 0.5) * 76 * k, dy: (r() - 0.5) * 56 * k, rot: (r() - 0.5) * 60 };
   }
   const FADE = [1, 0.92, 0.78, 0.6, 0.42, 0.25, 0.1];
-  function pileCardWidth() { return innerWidth <= 700 ? 76 : Math.max(84, Math.min(130, innerWidth * 0.09)); }
+  function pileCardWidth() { return innerWidth <= 700 ? 91 : Math.max(100, Math.min(156, innerWidth * 0.108)); }
 
   function renderCenter(v = S.view) {
     const col = COLOR_HEX[v.activeColor] || '#888';
@@ -237,12 +238,14 @@
       ? 'Vòng Quay Tử Thần! Chọn một màu.' : `${name(v.roulette.victim)} đang chọn màu cho Vòng Quay…`;
     if (v.current === me) {
       if (v.phase === 'mustPlayDrawn') return 'Bạn rút được lá đánh được, phải đánh ngay!';
-      if (v.drawnThisTurn > 0) return `Rút tiếp (${v.drawnThisTurn}/${v.maxDraw})…`;
-      return 'Tới lượt bạn: đánh một lá hợp lệ hoặc rút bài.';
+      return `Tới lượt bạn: đánh một lá hợp lệ hoặc rút bài (tự rút tối đa ${v.maxDraw} lá).`;
     }
     return `Lượt của ${name(v.current)}.`;
   }
 
+  const handCardWidth = () => Math.max(84, Math.min(144, innerWidth / 9.17));
+  const DANGER = E.KNOCKOUT - 5;
+  let fanIn = false;   // next hand render spreads the cards out from a stack
   function renderHand() {
     const v = S.view, hand = v.hand || [];
     const box = $('hand');
@@ -250,7 +253,7 @@
     const n = hand.length;
     const playable = new Set(v.playable);
     const maxW = Math.min(innerWidth - 40, 1200);
-    const cardW = Math.max(70, Math.min(120, innerWidth / 11));
+    const cardW = handCardWidth();
     const step = n > 1 ? Math.min(cardW * 0.8, (maxW - cardW) / (n - 1)) : 0;
     const totalW = cardW + step * (n - 1);
     const sorted = hand.slice().sort(sortCards);
@@ -260,7 +263,13 @@
       img.className = 'card hand-card';
       img.style.width = cardW + 'px';
       img.style.setProperty('--cw', cardW + 'px');
-      img.style.left = `calc(50% - ${totalW / 2}px + ${i * step}px)`;
+      const left = `calc(50% - ${totalW / 2}px + ${i * step}px)`;
+      if (fanIn) {
+        img.style.left = `calc(50% - ${cardW / 2}px + ${i * 1.5}px)`;
+        img.classList.add('fan-in');
+        requestAnimationFrame(() => requestAnimationFrame(() => { img.style.left = left; }));
+        setTimeout(() => img.classList.remove('fan-in'), 700);
+      } else img.style.left = left;
       img.style.zIndex = i;
       img._card = c;
       img.dataset.tip = '1';
@@ -268,12 +277,14 @@
       else if (v.actor === mySeat()) img.classList.add('dim');
       box.appendChild(img);
     });
+    fanIn = false;
+    box.classList.remove('passing');
     const me = v.seats[mySeat()];
-    box.classList.toggle('danger', !!me && !me.out && n >= 22);
+    box.classList.toggle('danger', !!me && !me.out && n >= DANGER);
     const chip = $('meChip');
     chip.classList.toggle('hidden', !me);
     if (me) {
-      chip.className = 'seat-static' + (v.actor === me.seat && v.phase !== 'over' ? ' active' : '') + (!me.out && n >= 22 ? ' danger' : '');
+      chip.className = 'seat-static' + (v.actor === me.seat && v.phase !== 'over' ? ' active' : '') + (!me.out && n >= DANGER ? ' danger' : '');
       chip.innerHTML = `<div class="seat-info"><span class="avatar" style="background:${avatarColor(me.name)}">${me.out ? '💀' : initial(me.name)}</span>
         <span class="pname">${esc(me.name)} (bạn)</span><span class="count">${me.out ? 'TỚI SỐ' : n + ' lá'}</span>${timerBadge(me.seat)}</div>`;
     }
@@ -287,7 +298,7 @@
     const v = S.view, me = mySeat();
     const myTurn = v.actor === me && v.phase !== 'over' && me >= 0;
     $('drawBtn').classList.toggle('hidden', !(myTurn && v.phase === 'play'));
-    $('drawBtn').textContent = v.drawnThisTurn ? `Rút tiếp (${v.drawnThisTurn}/${v.maxDraw})` : 'Rút bài';
+    $('drawBtn').textContent = 'Rút bài';
     $('acceptBtn').classList.toggle('hidden', !(myTurn && v.phase === 'stack'));
     $('acceptBtn').textContent = v.stack ? `Chịu phạt +${v.stack.total}` : 'Chịu phạt';
     const meSeat = v.seats[me];
@@ -475,7 +486,7 @@
           at(0, () => {
             const from = seatPos(e.seat), to = pileC();
             FX.bigText(`XẢ ${e.count + 1} LÁ!`, 'small');
-            for (let i = 0; i < Math.min(e.count, 10); i++) setTimeout(() => FX.fly(BACK, from, to, { width: 80, ms: 550, fromRot: i * 20 }), i * 110);
+            for (let i = 0; i < Math.min(e.count, 10); i++) setTimeout(() => FX.fly(BACK, from, to, { width: 96, ms: 550, fromRot: i * 20 }), i * 110);
           });
           at(Pace.eventMs(e) - 600, () => { const c = pileC(); FX.sprite('smoke', c.x, c.y, { scale: 3 }); });
         } break;
@@ -501,21 +512,44 @@
         case 'takeStack': case 'draw': at(0, () => {
           const p = seatPos(e.seat), d = deck();
           const n = Math.min(e.count, 12);
-          for (let i = 0; i < n; i++) setTimeout(() => FX.fly(BACK, d, p, { width: 70, ms: 450 }), i * 120);
-          if (e.type === 'takeStack') { FX.bigText(`${nameOf(e.seat)} nhận ${e.count} lá`, 'red small', 1300); setTimeout(() => FX.sprite('absorb', p.x, p.y, { scale: 1.4 }), n * 120); }
+          const gap = e.type === 'draw' ? 300 : 120;
+          for (let i = 0; i < n; i++) setTimeout(() => FX.fly(BACK, d, p, { width: 84, ms: e.type === 'draw' ? 550 : 450 }), i * gap);
+          if (e.type === 'draw') FX.bigText(`Rút ${e.count} lá`, 'small', 1000);
+          if (e.type === 'takeStack') { FX.bigText(`${nameOf(e.seat)} nhận ${e.count} lá`, 'red small', 1300); setTimeout(() => FX.sprite('absorb', p.x, p.y, { scale: 1.4 }), n * gap); }
         }); break;
         case 'drawFail': at(0, () => FX.bigText(`Rút ${v ? v.maxDraw : 3} lá không ra: MẤT LƯỢT`, 'small', 1300)); break;
         case 'zero': {
-          const same = e.n === 0 || (e.n === 2 && e.order.length === 2);
-          const caption = e.n === 0 ? 'Không ai đổi bài' : same ? 'Chuyển 2 lần: bài về chỗ cũ' : `Chuyển bài ${e.n} lần theo chiều đánh`;
-          at(0, () => { const c = pileC(); FX.wheel('Số 0: chuyển bài', [0, 1, 2], e.n, c.x, c.y, { caption }); });
-          for (let pass = 0; pass < e.n; pass++) {
-            at(Pace.WHEEL_MS + pass * 1300, () => {
-              FX.bigText(`Chuyển lần ${pass + 1}`, 'small', 1100);
-              e.order.forEach((st, i) => {
-                const a = seatPos(st), b = seatPos(e.order[(i + 1) % e.order.length]);
-                for (let j = 0; j < 3; j++) setTimeout(() => FX.fly(BACK, a, b, { width: 74, ms: 900, fromRot: j * 12 }), j * 90);
+          const caption = e.n === 0 ? 'Mặt 0: giữ nguyên bài' : 'Mặt 1: chuyền cả xấp bài cho người kế tiếp';
+          at(0, () => { const c = pileC(); FX.coin(e.n, c.x, c.y, { caption }); });
+          if (e.n > 0) {
+            // 1) every hand tidies into a neat stack
+            at(Pace.COIN_MS, () => {
+              const cw = handCardWidth();
+              [...$('hand').children].forEach((img, i) => {
+                img.classList.remove('playable', 'dim');
+                img.classList.add('gather');
+                img.style.left = `calc(50% - ${cw / 2}px + ${i * 1.5}px)`;
               });
+              for (const el of document.querySelectorAll('.seat')) el.classList.add('gathered');
+            });
+            // 2) each stack moves to the next player along the current direction
+            at(Pace.COIN_MS + Pace.GATHER_MS, () => {
+              const cw = handCardWidth();
+              $('hand').classList.add('passing');
+              for (const el of document.querySelectorAll('.seat')) el.classList.add('passing');
+              e.order.forEach((st, i) => {
+                const a = st === mySeat() ? { x: innerWidth / 2, y: innerHeight - cw * 0.67 - 6 } : seatPos(st);
+                const nx = e.order[(i + 1) % e.order.length];
+                const b = nx === mySeat() ? { x: innerWidth / 2, y: innerHeight - cw * 0.67 - 6 } : seatPos(nx);
+                const w = st === mySeat() ? cw : 60, w2 = nx === mySeat() ? cw : 60;
+                const count = Math.min(4, Math.max(1, (v.seats[st] || {}).count || 1));
+                for (let j = 0; j < count; j++) {
+                  const el = FX.place(BACK, a.x + j * 2, a.y - j * 2, { width: w });
+                  FX.move(el, b.x + j * 2, b.y - j * 2, { ms: Pace.PASS_MS - 100, width: w2 });
+                  setTimeout(() => FX.drop(el, 200), Pace.PASS_MS + 150);
+                }
+              });
+              fanIn = true;
             });
           }
           break;
@@ -523,13 +557,52 @@
         case 'seven': {
           const caption = `${nameOf(e.seat)} ⇄ ${nameOf(e.target)}: đổi ${e.k} lá` + (e.k < e.K ? ` (không đủ ${e.K})` : '');
           at(0, () => { const c = pileC(); FX.wheel('Số 7: số lá tráo', [1, 2, 3, 4, 5], e.K, c.x, c.y, { caption }); });
+          const groups = {};
+          // 1) the chosen cards leave each hand and line up neatly
           at(Pace.WHEEL_MS, () => {
+            const c = pileC();
+            for (const side of [e.seat, e.target]) {
+              const els = [];
+              const mine = side === mySeat() && e.mine;
+              const cw = handCardWidth();
+              const stage = side === mySeat()
+                ? { x: innerWidth / 2, y: innerWidth < 700 ? (c.y + innerHeight - cw * 1.34) / 2 + 40 : innerHeight - cw * 1.34 - 120 }
+                : (() => { const p = seatPos(side); return { x: p.x + (c.x - p.x) * 0.38, y: p.y + (c.y - p.y) * 0.38 }; })();
+              if (mine) {
+                const imgs = [...$('hand').children];
+                e.mine.forEach((card, i) => {
+                  const img = imgs.find(x => x._card && x._card.id === card.id);
+                  const r = img ? img.getBoundingClientRect() : { left: stage.x, top: innerHeight - 60, width: cw, height: cw * 1.34 };
+                  if (img) img.classList.add('picked');
+                  const el = FX.place(cardSrc(card), r.left + r.width / 2, r.top + r.height / 2, { width: r.width });
+                  const mid = (e.mine.length - 1) / 2;
+                  FX.move(el, stage.x + (i - mid) * cw * 0.42, stage.y + Math.abs(i - mid) * 4, { ms: 650, delay: i * 90, rot: (i - mid) * 5, scale: 0.85 });
+                  els.push(el);
+                });
+              } else {
+                const from = seatPos(side);
+                for (let i = 0; i < e.k; i++) {
+                  const el = FX.place(BACK, from.x, from.y, { width: 46 });
+                  FX.move(el, stage.x + i * 3, stage.y - i * 3, { ms: 650, delay: i * 90, width: 84, rot: (i % 2 ? 3 : -3) });
+                  els.push(el);
+                }
+              }
+              groups[side] = { els, stage };
+            }
             const a = seatPos(e.seat), b = seatPos(e.target);
-            FX.sprite('light', a.x, a.y, { scale: 1.6 }); FX.sprite('light', b.x, b.y, { scale: 1.6 });
+            FX.sprite('sparkle', a.x, a.y, { scale: 2 }); FX.sprite('sparkle', b.x, b.y, { scale: 2 });
           });
-          at(Pace.WHEEL_MS + 700, () => {
-            const a = seatPos(e.seat), b = seatPos(e.target);
-            for (let i = 0; i < e.k; i++) setTimeout(() => { FX.fly(BACK, a, b, { width: 74, ms: 900 }); FX.fly(BACK, b, a, { width: 74, ms: 900 }); }, i * 260);
+          // 2) the two lined-up piles swap owners
+          at(Pace.WHEEL_MS + Pace.PICK_MS + 500, () => {
+            for (const [from, to] of [[e.seat, e.target], [e.target, e.seat]]) {
+              const g = groups[from]; if (!g) continue;
+              const dest = to === mySeat() ? { x: innerWidth / 2, y: innerHeight - 90 } : seatPos(to);
+              const dx = dest.x - g.stage.x, dy = dest.y - g.stage.y;
+              g.els.forEach((el, i) => {
+                FX.move(el, parseFloat(el.style.left) + dx, parseFloat(el.style.top) + dy, { ms: Pace.SWAP_MS - 200, delay: i * 40, scale: 0.8 });
+                setTimeout(() => FX.drop(el, 200), Pace.SWAP_MS);
+              });
+            }
           });
           break;
         }
@@ -538,7 +611,7 @@
           at(0, () => FX.bigText(`${nameOf(e.seat)} chọn ${E.COLOR_NAMES[e.color]}`, 'purple small', 1200));
           e.flipped.forEach((card, i) => at(600 + i * 380, () => {
             const c = pileC(), p = seatPos(e.seat);
-            FX.fly(cardSrc(card), c, p, { width: 100, ms: 600, fromScale: 1.3 });
+            FX.fly(cardSrc(card), c, p, { width: 120, ms: 600, fromScale: 1.3 });
           }));
           at(600 + e.flipped.length * 380, () => { const p = seatPos(e.seat); FX.sprite('sparkle', p.x, p.y, { scale: 3 }); FX.bigText(`Lật ${e.flipped.length} lá!`, 'purple small', 1100); });
           break;
@@ -595,7 +668,7 @@
   // ---------- card help + tooltips ----------
   const EFFECT = {
     number: 'Không có hiệu ứng. Đánh khi trùng màu hoặc trùng số.',
-    zero: 'Quay ngẫu nhiên 0–2. Mỗi lần, mọi người chuyển toàn bộ bài cho người kế tiếp theo chiều đánh.',
+    zero: 'Tung đồng xu: ra 1 thì mọi người chuyển cả xấp bài cho người kế tiếp theo chiều đánh, ra 0 thì giữ nguyên.',
     seven: 'Chọn 1 đối thủ. Hệ thống quay K (1–5) rồi đổi ngẫu nhiên K lá giữa hai bên (ít hơn nếu một bên không đủ bài).',
     skip: 'Người kế tiếp mất lượt.',
     reverse: 'Đảo chiều vòng đánh. Còn 2 người thì như Cấm Lượt.',
@@ -627,7 +700,7 @@
   function openHelp() {
     $('helpRules').innerHTML = `<ul>
       <li>Đánh lá trùng <b>màu</b>, trùng <b>số/ký hiệu</b>, hoặc lá <b>Đa Sắc</b>.</li>
-      <li>Không đánh được thì rút từng lá, tối đa <b>${E.MAX_DRAW} lá</b>. Rút trúng lá đánh được thì phải đánh ngay; rút đủ mà không ra thì mất lượt.</li>
+      <li>Không đánh được thì bấm Rút bài: hệ thống tự rút đến khi ra lá đánh được (phải đánh ngay) hoặc đủ <b>${E.MAX_DRAW} lá</b> (mất lượt).</li>
       <li>Lá phạt cộng dồn: đỡ bằng lá phạt <b>bằng hoặc lớn hơn</b> (+2 ≤ +4 ≤ +6 ≤ +10), không cần trùng màu.</li>
       <li>Chạm <b>${E.KNOCKOUT} lá</b> là <b>Tới Số</b> (bị loại). Hết bài hoặc là người cuối cùng còn sống thì thắng.</li>
       <li>Mỗi lượt có <b>${Math.round(Pace.TURN_MS / 1000)} giây</b>; hết giờ hệ thống tự đánh thay.</li>
