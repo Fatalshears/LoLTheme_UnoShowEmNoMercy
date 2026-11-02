@@ -256,23 +256,15 @@
   function act(st, seat, a) {
     st.events = [];
     if (st.phase === 'over') throw new Error('Ván đã kết thúc');
-    if (actor(st) !== seat && a.type !== 'callToiBen') throw new Error('Chưa tới lượt bạn');
+    if (actor(st) !== seat) throw new Error('Chưa tới lượt bạn');
     switch (a.type) {
       case 'play': play(st, seat, a); break;
       case 'draw': draw(st, seat); break;
       case 'acceptStack': acceptStack(st, seat); break;
       case 'rouletteColor': rouletteColor(st, seat, a.color); break;
-      case 'callToiBen': callToiBen(st, seat); break;
       default: throw new Error('Hành động không hợp lệ');
     }
     return st.events;
-  }
-
-  function callToiBen(st, seat) {
-    const s = st.seats[seat];
-    if (s.out || s.hand.length !== 1) throw new Error('Chỉ hô khi còn đúng 1 lá');
-    say(st, `📣 ${s.name}: TỚI BẾN!`);
-    emit(st, { type: 'toiBen', seat });
   }
 
   // One "draw" action keeps drawing until a playable card shows up or MAX_DRAW cards are drawn.

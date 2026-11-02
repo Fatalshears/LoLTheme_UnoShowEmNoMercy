@@ -33,7 +33,7 @@ Trong mạng LAN: http://192.168.1.25:3000
 3. Bài đánh được sẽ nổi lên và có viền vàng; bấm để đánh. Lá Đa Sắc sẽ hỏi màu, số 7 sẽ hỏi người để tráo.
 4. Không có bài hợp lệ: bấm **Rút bài** (hoặc bấm vào chồng rút ở góc trên bên trái) một lần, hệ thống tự rút đến khi ra lá đánh được hoặc đủ 3 lá.
 5. Bị cộng dồn: đánh đè lá phạt có giá trị lớn hơn hoặc bằng, hoặc bấm **Chịu phạt**.
-6. Còn 1 lá: bấm **TỚI BẾN!** cho đẹp (không có phạt nếu quên).
+6. Còn 1 lá: khung tên người đó tự sáng hiệu ứng để cả bàn biết, không cần bấm gì.
 7. Mỗi lượt có 45 giây; hết giờ hệ thống tự đánh thay.
 8. ❓ mở bảng tra cứu hiệu ứng lá bài, 😀 mở bảng emote. Rê chuột lên lá bài để xem hiệu ứng.
 9. Chủ phòng bấm ⚙ để **tạm dừng / tiếp tục** ván (đồng hồ lượt cũng dừng) hoặc **giải tán phòng** (mọi người về màn hình chính, điểm bị xoá).

@@ -189,6 +189,7 @@
       if (v.actor === s.seat && v.phase !== 'over') el.classList.add('active');
       if (s.out) el.classList.add('out');
       if (!s.out && s.count >= DANGER) el.classList.add('danger');
+      if (!s.out && s.count === 1 && v.phase !== 'over') el.classList.add('last');
       el.style.left = pos.x + 'px'; el.style.top = pos.y + 'px';
       el.dataset.seat = s.seat;
       const fan = Math.min(s.count, 8);
@@ -197,7 +198,7 @@
       el.innerHTML = `
         ${isMe ? '' : `<div class="mini-fan">${s.out ? '' : backs}</div>`}
         <div class="seat-info">
-          <span class="avatar" style="background:${avatarColor(s.name)}">${s.out ? '💀' : initial(s.name)}</span>
+          <span class="avatar" style="background:${avatarColor(s.name)};--t0:-${Math.round(performance.now() % 2400)}ms">${s.out ? '💀' : initial(s.name)}<i class="last-fx"></i><i class="last-fire"></i></span>
           <span class="pname">${esc(s.name)}${isMe ? ' (bạn)' : ''}</span>
           <span class="count">${s.out ? 'TỚI SỐ' : s.count + ' lá'}</span>
           ${p.bot ? '<span class="tag">Bot</span>' : ''}${p.connected === false ? '<span class="tag warn">Mất mạng</span>' : ''}${p.auto && !p.bot ? '<span class="tag">Tự đánh</span>' : ''}
@@ -325,8 +326,6 @@
     $('drawBtn').textContent = 'Rút bài';
     $('acceptBtn').classList.toggle('hidden', !(myTurn && v.phase === 'stack'));
     $('acceptBtn').textContent = v.stack ? `Chịu phạt +${v.stack.total}` : 'Chịu phạt';
-    const meSeat = v.seats[me];
-    $('toiBenBtn').classList.toggle('hidden', !(meSeat && !meSeat.out && meSeat.count === 1 && v.phase !== 'over'));
     $('drawPile').classList.toggle('clickable', myTurn && v.phase === 'play');
     $('status').textContent = statusText();
     $('status').classList.toggle('mine', myTurn);
@@ -386,7 +385,7 @@
   $('drawBtn').onclick = () => act({ type: 'draw' });
   $('drawPile').onclick = () => { if ($('drawPile').classList.contains('clickable')) act({ type: 'draw' }); };
   $('acceptBtn').onclick = () => act({ type: 'acceptStack' });
-  $('toiBenBtn').onclick = () => act({ type: 'callToiBen' });
+  { const q = new URLSearchParams(location.search).get('lastfx'); if (q) $('table').dataset.lastfx = q; } // preview other last-card effects
   $('emoteBtn').onclick = () => $('emotePanel').classList.toggle('hidden');
   $('helpBtn').onclick = openHelp;
   $('lobbyHelpBtn').onclick = openHelp;
@@ -651,7 +650,6 @@
           FX.bigText('TỚI SỐ!', 'red huge', 2000);
         }); break;
         case 'lastCard': at(0, () => { const p = seatPos(e.seat); FX.sprite('heartbeat', p.x, p.y - 50, { scale: 2 }); }); break;
-        case 'toiBen': at(0, () => { const p = seatPos(e.seat); FX.sprite('firework', p.x, p.y, { scale: 3 }); FX.bigText('TỚI BẾN!', 'gold huge'); }); break;
         case 'reshuffle': at(0, () => FX.bigText('Trộn lại bài', 'small')); break;
         case 'win': at(0, () => {
           const p = seatPos(e.seat);

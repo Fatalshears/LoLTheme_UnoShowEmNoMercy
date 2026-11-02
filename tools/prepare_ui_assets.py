@@ -27,6 +27,7 @@ ICON_FILES = {
     "trophy": "Item/Trophy/256w/Golden Trophy 1st 256px.png",
     "crown": "Item/Crown/256px/Crown 1st 256px.png",
     "clock": "Item/Clock/256px/Golden Clock 1st 256px.png",
+    "fire": "Main/Fire 2/256w/Fire 256px.png",
 }
 
 # colour rows in every sheet: 0 red, 1 purple, 2 cyan, 3 green, 4 brown, 5 grey, 6 mauve, 7 orange, 8 blue

@@ -32,7 +32,6 @@
       case 'roulette': return 600 + (e.flipped ? e.flipped.length : 1) * 380 + 600;
       case 'knockout': return 2200;
       case 'lastCard': return 300;
-      case 'toiBen': return 1200;
       case 'reshuffle': return 900;
       case 'win': return 2600;
       default: return 0;
