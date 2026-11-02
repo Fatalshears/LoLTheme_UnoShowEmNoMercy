@@ -74,7 +74,7 @@
   }
   const randInt = (rng, lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
 
-  // players: [{ name }]. Seat 0 is "Ghế 1" and starts.
+  // players: [{ name }]. The first player is drawn at random (shown by the start wheel).
   function newRound(players, seed) {
     if (players.length < 2 || players.length > 8) throw new Error('Cần 2–8 người chơi');
     const rng = mulberry32(seed ?? (Date.now() ^ Math.floor(Math.random() * 1e9)));
@@ -89,7 +89,7 @@
     }
     const st = {
       seats, drawPile, discard: [top], tray: [],
-      current: 0, direction: 1, activeColor: top.color,
+      current: randInt(rng, 0, seats.length - 1), direction: 1, activeColor: top.color,
       phase: 'play',          // play | mustPlayDrawn | stack | roulette | over
       drawnThisTurn: 0, drawnCardId: null,
       stack: null,            // { total, last, target }
@@ -97,7 +97,7 @@
       winner: null, endReason: null, knockouts: [],
       rng, events: [], log: [], turnId: 1
     };
-    say(st, `Ván mới. Lá mở màn: ${cardName(top)}. ${seats[0].name} đi trước.`);
+    say(st, `Ván mới. Lá mở màn: ${cardName(top)}. ${seats[st.current].name} đi trước.`);
     return st;
   }
 

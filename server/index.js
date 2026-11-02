@@ -141,13 +141,11 @@ function startRound() {
   const seated = table.players.slice(0, MAX_SEATS);
   if (seated.length < 2) throw new Error('Cần ít nhất 2 người chơi');
   table.round++;
-  // rotate who starts each round
-  const shift = (table.round - 1) % seated.length;
-  const order = seated.slice(shift).concat(seated.slice(0, shift));
+  const order = seated;   // seats keep join order; the engine draws who starts
   table.seatTokens = order.map(p => p.token);
   table.game = E.newRound(order.map(p => ({ name: p.name })));
   table.status = 'playing'; table.paused = false;
-  const events = [{ type: 'roundStart' }];
+  const events = [{ type: 'roundStart', first: table.game.current }];
   table.animUntil = Date.now() + Pace.totalMs(events);
   table.turn = null; updateTurn();
   broadcast(events);

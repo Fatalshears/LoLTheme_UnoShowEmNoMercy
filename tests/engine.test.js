@@ -45,6 +45,7 @@ function setup(n, hands, topCard, color) {
   let id = 1000;
   st.seats.forEach((s, i) => { st.drawPile.push(...s.hand); s.hand = (hands[i] || []).map(c => ({ id: id++, value: null, ...c })); });
   st.discard = [{ id: id++, value: null, ...topCard }];
+  st.current = 0;
   st.activeColor = color || topCard.color;
   return st;
 }

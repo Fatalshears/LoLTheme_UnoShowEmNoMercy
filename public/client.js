@@ -380,7 +380,7 @@
   // ---------- actions ----------
   // One action per shown state: wait for the server's answer (and its animation) before the next.
   let locked = false;
-  const canAct = () => !locked && !busy && !queue.length;
+  const canAct = () => !locked && !busy && !queue.length && !$('table').classList.contains('picking');
   function act(a) { if (!canAct()) return; locked = true; socket.emit('act', a); setTimeout(() => (locked = false), 4000); }
   socket.on('toast', () => (locked = false));
   $('drawBtn').onclick = () => act({ type: 'draw' });
@@ -491,9 +491,14 @@
     const seatPos = st => (st === mySeat() ? handPos() : seatCenter(st));
     let t = 0;
     const at = (ms, fn) => { const when = t + ms; setTimeout(fn, when); };
-    for (const e of s.events || []) {
+    for (const e of orderEvents(s.events || [])) {
       switch (e.type) {
-        case 'roundStart': at(0, () => FX.bigText('VÁN MỚI!', 'gold')); break;
+        case 'roundStart': {
+          at(0, () => { FX.bigText('VÁN MỚI!', 'gold', 1200); $('table').classList.add('picking'); });
+          if (e.first != null && v) at(1200, () => pickFirst(e.first, v.seats.length));
+          at(Pace.eventMs(e) - 50, () => $('table').classList.remove('picking'));
+          break;
+        }
         case 'play': {
           at(0, () => {
             const from = seatPos(e.seat), c = pileC(), sc = scatter(e.card.id);
@@ -658,6 +663,44 @@
       t += Pace.eventMs(e);
     }
     return t;
+  }
+
+  // Round start: a glow hops around the table (clockwise from me) and stops on who goes first.
+  function pickFirst(first, n) {
+    const order = seatOrder();
+    const target = order.indexOf(first);
+    const steps = n * 2 + target;               // two full laps, then land
+    const spin = Pace.PICK_FIRST_MS - 1000;
+    const delays = []; let acc = 0;
+    for (let i = 0; i < steps; i++) delays.push(1 + i * i);
+    const sum = delays.reduce((a, b) => a + b, 0);
+    const scale = spin / sum;
+    const ring = document.createElement('div');
+    ring.className = 'picker';
+    $('fxLayer').appendChild(ring);
+    const chipPos = seat => { const el = document.querySelector(`.seat[data-seat="${seat}"] .seat-info`); return el ? centerOf(el) : seatCenter(seat); };
+    const put = k => { const p = chipPos(order[k % n]); ring.style.left = p.x + 'px'; ring.style.top = p.y + 'px'; };
+    put(0);
+    for (let i = 1; i <= steps; i++) { acc += delays[i - 1] * scale; setTimeout(() => put(i), acc); }
+    setTimeout(() => {
+      ring.classList.add('done');
+      const p = chipPos(first);
+      FX.sprite('sparkle', p.x, p.y, { scale: 2.4 });
+      FX.bigText(first === mySeat() ? 'BẠN ĐI TRƯỚC!' : 'ĐI TRƯỚC!', 'gold small', 1000);
+      setTimeout(() => ring.remove(), 1000);
+    }, spin + 30);
+  }
+
+  // A knockout is shown after that player's draw animation, never before it.
+  function orderEvents(list) {
+    const DRAWS = ['takeStack', 'draw', 'roulette'];
+    const out = [], held = [];
+    list.forEach((e, i) => {
+      if (e.type === 'knockout' && list.some((x, k) => k > i && x.seat === e.seat && DRAWS.includes(x.type))) { held.push(e); return; }
+      out.push(e);
+      if (DRAWS.includes(e.type)) for (const ko of held.filter(h => h.seat === e.seat)) { out.push(ko); held.splice(held.indexOf(ko), 1); }
+    });
+    return out.concat(held);
   }
 
   // ---------- turn timer ----------
