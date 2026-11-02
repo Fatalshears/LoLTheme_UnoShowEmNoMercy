@@ -11,14 +11,13 @@
   const PASS_MS = 1100;    // stacks travel to the next player
   const PICK_MS = 1000;    // the 7's chosen cards leave the hands and line up
   const SWAP_MS = 1100;    // the two piles change owners
-  const DICE_ROLL_MS = 1300;  // round start: dice tumble and land
-  const DICE_HOLD_MS = 800;   // ...and stay on their faces before a re-roll or the result
-  const DICE_RESULT_MS = 1400; // winner's die glows, "đi trước" banner
+  const PICK_SPIN_MS = 3000;  // round start: name wheel spins and slows down
+  const PICK_HOLD_MS = 1300;  // ...then holds on who goes first
 
   // How long the client spends on one event, in ms.
   function eventMs(e) {
     switch (e.type) {
-      case 'roundStart': return 1200 + (e.rolls ? e.rolls.length : 1) * (DICE_ROLL_MS + DICE_HOLD_MS) + DICE_RESULT_MS;
+      case 'roundStart': return 1200 + PICK_SPIN_MS + PICK_HOLD_MS;
       case 'play': return 800;
       case 'discardAll': return 700 + Math.min(e.count || 0, 10) * 110;
       case 'skip': return 900;
@@ -42,7 +41,7 @@
 
   const totalMs = events => (events || []).reduce((a, e) => a + eventMs(e), 0);
 
-  const api = { TURN_MS, DICE_ROLL_MS, DICE_HOLD_MS, DICE_RESULT_MS, WHEEL_MS, COIN_MS, GATHER_MS, PASS_MS, PICK_MS, SWAP_MS, eventMs, totalMs };
+  const api = { TURN_MS, PICK_SPIN_MS, PICK_HOLD_MS, WHEEL_MS, COIN_MS, GATHER_MS, PASS_MS, PICK_MS, SWAP_MS, eventMs, totalMs };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ToiBenPace = api;
 })(typeof window !== 'undefined' ? window : globalThis);

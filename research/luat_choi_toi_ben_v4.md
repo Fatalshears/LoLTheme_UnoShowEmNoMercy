@@ -60,7 +60,7 @@ Các mục đánh dấu **[MỚI]** là thay đổi so với bản 1.
 - **Số người chơi:** 2–8.
 - **Bộ bài:** 252 lá (chi tiết ở mục 9).
 - **Chia bài:** mỗi người 7 lá úp.
-- **Người đi trước:** mỗi người tung 1 xúc xắc, ai cao nhất đi trước; nếu nhiều người cùng cao nhất thì những người đó tung lại.
+- **Người đi trước:** hệ thống chọn ngẫu nhiên (hiển thị bằng vòng quay tên).
 - **Lá mở màn:** lật lá trên cùng của Chồng Rút. Lá mở màn phải là **Lá Số (0–9)**; nếu lật trúng lá Chức năng hoặc Đa Sắc thì nhét lại vào giữa Chồng Rút và lật tiếp. Hiệu ứng của số `0` và `7` không kích hoạt ở lá mở màn.
 - **Thứ tự lượt:** bắt đầu từ Ghế 1, theo chiều kim đồng hồ.
 

@@ -386,43 +386,37 @@ input {
 #table.picking .seat.active .seat-info { box-shadow: none; border-color: var(--panel-border); }
 #table.picking .tmr, #table.picking #status { visibility: hidden; }
 
-/* dice (round start) */
-.die-wrap {
-  --die: 54px; position: absolute; width: var(--die); height: var(--die); translate: -50% -50%;
-  perspective: 420px; pointer-events: none; z-index: 5; transition: opacity .3s, filter .3s, scale .3s;
-  filter: drop-shadow(0 6px 6px rgba(0,0,0,.55));
+/* round start: who goes first */
+.first-wheel {
+  position: absolute; translate: -50% -50%; z-index: 6; pointer-events: none; display: grid; justify-items: center; gap: 8px;
+  --fw: min(300px, 62vw, 44vh); margin-top: 24px; animation: land .35s ease-out;
 }
-.die { position: absolute; inset: 0; transform-style: preserve-3d; }
-.die .face {
-  position: absolute; inset: 0; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 13%;
-  border-radius: 20%; border: 3px solid #3b1c0b; backface-visibility: hidden;
-  background: radial-gradient(circle at 30% 25%, #fff3c4 0 12%, transparent 40%), linear-gradient(145deg, #ffd25e, #f3961c);
-  box-shadow: inset 0 -5px 0 rgba(160,70,0,.35);
+.first-wheel::before {
+  content: ''; position: absolute; left: 50%; top: 45%; width: calc(var(--fw) * 1.7); height: calc(var(--fw) * 1.7); translate: -50% -50%;
+  border-radius: 50%; background: radial-gradient(closest-side, rgba(8,8,14,.75), rgba(8,8,14,.45) 60%, transparent); z-index: -1;
 }
-.die .face i { margin: 12%; border-radius: 50%; }
-.die .face i.on { background: radial-gradient(circle at 35% 35%, #7a3a12, #3b1c0b 70%); }
-.die .f1 { transform: translateZ(calc(var(--die) / 2)); }
-.die .f6 { transform: rotateY(180deg) translateZ(calc(var(--die) / 2)); }
-.die .f2 { transform: rotateY(90deg) translateZ(calc(var(--die) / 2)); }
-.die .f5 { transform: rotateY(-90deg) translateZ(calc(var(--die) / 2)); }
-.die .f3 { transform: rotateX(90deg) translateZ(calc(var(--die) / 2)); }
-.die .f4 { transform: rotateX(-90deg) translateZ(calc(var(--die) / 2)); }
-.die-wrap.tumble { animation: dieDrop 1.2s cubic-bezier(.3,.6,.4,1) both; }
-.die-wrap.land { rotate: var(--tilt, 0deg); }
-@keyframes dieDrop {
-  0% { transform: translateY(-90px) scale(.6); opacity: 0; }
-  15% { opacity: 1; }
-  45% { transform: translateY(0) scale(1); }
-  62% { transform: translateY(-22px); }
-  78% { transform: translateY(0); }
-  88% { transform: translateY(-6px); }
-  100% { transform: translateY(0); }
+.fw-title { font: 400 clamp(20px, 2.6vw, 30px)/1.2 var(--font-display); color: var(--gold); text-shadow: 0 3px 0 #000, 0 0 18px rgba(232,196,106,.5); white-space: nowrap; }
+.fw-box { position: relative; width: var(--fw); height: var(--fw); }
+.fw-disc { width: 100%; height: 100%; display: block; filter: drop-shadow(0 10px 18px rgba(0,0,0,.6)); }
+.fw-disc .rim { fill: #2a1a0c; stroke: #e8c46a; stroke-width: 2.5; }
+.fw-disc .slice path { stroke: rgba(0,0,0,.35); stroke-width: 1; }
+.fw-disc .slice text { fill: #fff; font: 700 11px var(--font); paint-order: stroke; stroke: rgba(0,0,0,.45); stroke-width: 2.4px; }
+.fw-disc .peg { fill: #fff3cf; stroke: #8a5a14; stroke-width: 1; }
+.fw-hub {
+  position: absolute; left: 50%; top: 50%; width: 22%; height: 22%; translate: -50% -50%; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff4cc, #e8c46a 45%, #9a6a1c); border: 3px solid #3b240c;
+  box-shadow: 0 3px 8px rgba(0,0,0,.5);
 }
-.die-wrap.out { opacity: .35; filter: grayscale(1) drop-shadow(0 4px 4px rgba(0,0,0,.5)); scale: .85; }
-.die-wrap.tie { filter: drop-shadow(0 0 10px #fff) drop-shadow(0 6px 6px rgba(0,0,0,.55)); }
-.die-wrap.win { scale: 1.3; filter: drop-shadow(0 0 14px #ffd76a) drop-shadow(0 0 28px rgba(255,190,60,.8)); }
-.die-wrap.gone { opacity: 0; }
-@media (max-width: 700px) { .die-wrap { --die: 38px; } .die .face { border-width: 2px; } }
+.fw-pointer {
+  position: absolute; left: 50%; top: -14px; translate: -50% 0; z-index: 2; width: 30px; height: 36px;
+  background: linear-gradient(#fff4cc, #e8c46a 55%, #b07a20); clip-path: polygon(0 0, 100% 0, 50% 100%);
+  filter: drop-shadow(0 3px 3px rgba(0,0,0,.6));
+}
+.first-wheel.done .fw-pointer { animation: pop .5s; }
+.fw-disc .slice { transition: opacity .3s; }
+.first-wheel.done .slice:not(.win) { opacity: .35; }
+.first-wheel.done .slice.win path { stroke: #fff; stroke-width: 3; }
+.first-wheel.out { opacity: 0; transition: opacity .3s; }
 
 /* icons from the icon pack */
 .btn.icon img { width: 28px; height: 28px; display: block; }

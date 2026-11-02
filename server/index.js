@@ -146,7 +146,7 @@ function startRound() {
   table.seatTokens = order.map(p => p.token);
   table.game = E.newRound(order.map(p => ({ name: p.name })));
   table.status = 'playing'; table.paused = false;
-  const events = [{ type: 'roundStart', first: table.game.current, rolls: table.game.firstRolls }];
+  const events = [{ type: 'roundStart', first: table.game.current }];
   table.animUntil = Date.now() + Pace.totalMs(events);
   table.turn = null; updateTurn();
   broadcast(events);

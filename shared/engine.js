@@ -74,26 +74,6 @@
   }
   const randInt = (rng, lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
 
-  // Who goes first: everyone rolls one die, the highest roll wins, tied leaders roll again.
-  // Returns { first, rounds } where rounds[r][seat] is that seat's roll (null = not rolling).
-  // From the third round on, tied players get distinct faces so it always ends.
-  function rollForFirst(rng, n) {
-    let alive = Array.from({ length: n }, (_, i) => i);
-    const rounds = [];
-    for (let r = 0; ; r++) {
-      const row = Array(n).fill(null);
-      if (r >= 2 && alive.length <= 6) {
-        const faces = shuffle([1, 2, 3, 4, 5, 6], rng);
-        alive.forEach((i, k) => { row[i] = faces[k]; });
-      } else {
-        for (const i of alive) row[i] = randInt(rng, 1, 6);
-      }
-      rounds.push(row);
-      const max = Math.max(...alive.map(i => row[i]));
-      alive = alive.filter(i => row[i] === max);
-      if (alive.length === 1) return { first: alive[0], rounds };
-    }
-  }
 
   // players: [{ name }]. The first player is drawn at random (shown by the start wheel).
   function newRound(players, seed) {
@@ -110,7 +90,7 @@
     }
     const st = {
       seats, drawPile, discard: [top], tray: [],
-      current: 0, direction: 1, activeColor: top.color,
+      current: randInt(rng, 0, seats.length - 1), direction: 1, activeColor: top.color,
       phase: 'play',          // play | mustPlayDrawn | stack | roulette | over
       drawnThisTurn: 0, drawnCardId: null,
       stack: null,            // { total, last, target }
@@ -118,8 +98,6 @@
       winner: null, endReason: null, knockouts: [],
       rng, events: [], log: [], turnId: 1
     };
-    const pick = rollForFirst(rng, seats.length);
-    st.current = pick.first; st.firstRolls = pick.rounds;
     say(st, `Ván mới. Lá mở màn: ${cardName(top)}. ${seats[st.current].name} đi trước.`);
     return st;
   }
@@ -513,7 +491,7 @@
 
   const api = {
     COLORS, KNOCKOUT, MAX_DRAW, STACK_VALUE, WILD_KINDS, COLOR_NAMES,
-    buildDeck, newRound, rollForFirst, act, playableIds, actor, nextSeat, canMatch, viewFor, eventsFor,
+    buildDeck, newRound, act, playableIds, actor, nextSeat, canMatch, viewFor, eventsFor,
     cardName, cardPoints, isWild, isStackCard, needsColor, top, alive
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
