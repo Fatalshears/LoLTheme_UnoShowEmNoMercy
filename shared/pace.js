@@ -30,7 +30,7 @@
       case 'seven': return WHEEL_MS + PICK_MS + 500 + SWAP_MS + 300;
       case 'rouletteStart': return 1500;
       case 'roulette': return 600 + (e.flipped ? e.flipped.length : 1) * 380 + 600;
-      case 'knockout': return 2200;
+      case 'knockout': return 2600;
       case 'lastCard': return 300;
       case 'reshuffle': return 900;
       case 'win': return 2600;

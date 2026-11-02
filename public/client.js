@@ -270,7 +270,7 @@
       ? 'Vòng Quay Tử Thần! Chọn một màu.' : `${name(v.roulette.victim)} đang chọn màu cho Vòng Quay…`;
     if (v.current === me) {
       if (v.phase === 'mustPlayDrawn') return 'Bạn rút được lá đánh được, phải đánh ngay!';
-      return 'Tới lượt bạn: đánh một lá hoặc rút bài.';
+      return v.playable && v.playable.length ? 'Tới lượt bạn: đánh một lá hoặc rút bài.' : 'Không có lá đánh được: bấm Rút bài.';
     }
     return `Lượt của ${name(v.current)}.`;
   }
@@ -324,6 +324,8 @@
     const myTurn = v.actor === me && v.phase !== 'over' && me >= 0;
     $('drawBtn').classList.toggle('hidden', !(myTurn && v.phase === 'play'));
     $('drawBtn').textContent = 'Rút bài';
+    // nothing playable: the draw button blinks so the player knows what to do
+    $('drawBtn').classList.toggle('must', myTurn && v.phase === 'play' && !(v.playable && v.playable.length));
     $('acceptBtn').classList.toggle('hidden', !(myTurn && v.phase === 'stack'));
     $('acceptBtn').textContent = v.stack ? `Chịu phạt +${v.stack.total}` : 'Chịu phạt';
     $('drawPile').classList.toggle('clickable', myTurn && v.phase === 'play');
@@ -644,11 +646,21 @@
           at(600 + e.flipped.length * 380, () => { const p = seatPos(e.seat); FX.sprite('sparkle', p.x, p.y, { scale: 3 }); FX.bigText(`Lật ${e.flipped.length} lá!`, 'purple small', 1100); });
           break;
         }
-        case 'knockout': at(200, () => {
-          const p = seatPos(e.seat);
-          FX.sprite('koBoom', p.x, p.y, { scale: 3 }); FX.sprite('skull', p.x, p.y - 30, { scale: 3 }); FX.shake(700);
-          FX.bigText('TỚI SỐ!', 'red huge', 2000);
-        }); break;
+        case 'knockout': {
+          // Big knockout: flash, double explosion, shockwaves, the hand blown apart, red skull rising.
+          at(150, () => {
+            const p = seatPos(e.seat);
+            FX.flash('white', 260);
+            FX.sprite('boom10', p.x, p.y, { scale: 3.2 });
+            FX.shockwave(p.x, p.y, { size: 520 }); FX.shockwave(p.x, p.y, { size: 340, delay: 140, cls: 'thin' });
+            FX.debris(BACK, p.x, p.y, 12);
+            FX.shake(900, true);
+          });
+          at(330, () => { const p = seatPos(e.seat); FX.flash('red', 900); FX.sprite('koBoom', p.x, p.y, { scale: 4.2 }); });
+          at(650, () => { const p = seatPos(e.seat); FX.sprite('skullRed', p.x, p.y - 60, { scale: 3.4 }); FX.bigText('TỚI SỐ!', 'red huge', 1900); });
+          at(1000, () => { const p = seatPos(e.seat); FX.sprite('smoke', p.x, p.y - 20, { scale: 4 }); FX.sprite('smoke', p.x + 40, p.y, { scale: 3, rotate: 40 }); });
+          break;
+        }
         case 'lastCard': at(0, () => { const p = seatPos(e.seat); FX.sprite('heartbeat', p.x, p.y - 50, { scale: 2 }); }); break;
         case 'reshuffle': at(0, () => FX.bigText('Trộn lại bài', 'small')); break;
         case 'win': at(0, () => {

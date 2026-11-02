@@ -145,10 +145,41 @@
     setTimeout(() => el.remove(), ms + 30);
   }
 
-  function shake(ms = 400) {
+  function shake(ms = 400, big = false) {
     const t = document.getElementById('table');
-    t.classList.remove('shake'); void t.offsetWidth; t.classList.add('shake');
-    setTimeout(() => t.classList.remove('shake'), ms);
+    t.classList.remove('shake', 'shake-big'); void t.offsetWidth; t.classList.add(big ? 'shake-big' : 'shake');
+    setTimeout(() => t.classList.remove('shake', 'shake-big'), ms);
+  }
+
+  // Full-screen flash (knockout etc.).
+  function flash(cls = 'red', ms = 600) {
+    const el = document.createElement('div');
+    el.className = 'screen-flash ' + cls;
+    el.style.animationDuration = ms + 'ms';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), ms);
+  }
+
+  // Expanding ring from (x, y).
+  function shockwave(x, y, opts = {}) {
+    const el = document.createElement('div');
+    el.className = 'shockwave ' + (opts.cls || '');
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+    if (opts.size) el.style.setProperty('--sw', opts.size + 'px');
+    if (opts.delay) el.style.animationDelay = opts.delay + 'ms';
+    layer().appendChild(el);
+    setTimeout(() => el.remove(), 900 + (opts.delay || 0));
+  }
+
+  // Card backs blown outward from (x, y).
+  function debris(src, x, y, n = 10, opts = {}) {
+    const dist = (opts.dist || 260) * (innerWidth < 700 ? 0.6 : 1);
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + Math.random() * 0.5, d = dist * (0.6 + Math.random() * 0.6);
+      fly(src, { x, y }, { x: x + Math.cos(a) * d, y: y + Math.sin(a) * d },
+        { width: opts.width || 56, ms: 700 + Math.random() * 300, fromScale: 0.4, toScale: 1.1,
+          fromRot: 0, toRot: (Math.random() - 0.5) * 720 });
+    }
   }
 
   // ---- emotes ----
@@ -193,5 +224,5 @@
     setTimeout(() => el.remove(), 3200);
   }
 
-  window.FX = { ready, sprite, fly, bigText, wheel, coin, place, move, drop, shake, emoteNode, showEmote };
+  window.FX = { ready, sprite, fly, bigText, wheel, coin, place, move, drop, shake, flash, shockwave, debris, emoteNode, showEmote };
 })();

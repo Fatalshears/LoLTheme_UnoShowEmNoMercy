@@ -40,6 +40,7 @@ EFFECTS = {
     "swirl_blue": ("Part 1/03.png", "blue"),
     "starburst": ("Part 9/436.png", "yellow"),
     "rune": ("Part 4/186.png", "yellow"),
+    "skullRed": ("Part 13/633.png", "red"),
 }
 SIZE = 64
 
